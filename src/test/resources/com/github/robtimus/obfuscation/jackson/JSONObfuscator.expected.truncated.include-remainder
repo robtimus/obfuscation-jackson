@@ -1,0 +1,19 @@
+{
+  "string": "***",
+  "int": ***,
+  "float": ***,
+  "boolean": ***,
+  "object": ***,
+  "array": ***,
+  "null": ***,
+  "notMatched": "123456",
+  "nested": [ {
+    "string": "***",
+    "int": ***,
+    "float": ***,
+    "boolean": ***,
+    "object": <obfuscation aborted due to malformed JSON>{
+      "nested": [ {
+        "prop1": "1
+
+and some more

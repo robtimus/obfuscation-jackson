@@ -1,0 +1,24 @@
+{
+  "string": "string",
+  "int": 123456,
+  "float": 1234.56,
+  "boolean": true,
+  "object": {
+    "nested": [ {
+      "prop1": "1",
+      "prop2": "2"
+    } ]
+  },
+  "array": [ [ "1", "2" ], {} ],
+  "null": null,
+  "notMatched": "123456",
+  "nested": [ {
+    "string": "string",
+    "int": 123456,
+    "float": 1234.56,
+    "boolean": true,
+    "object": {
+      "nested": [ {
+        "prop1": "1
+
+and some more
