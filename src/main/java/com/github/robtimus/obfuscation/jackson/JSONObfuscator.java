@@ -17,8 +17,10 @@
 
 package com.github.robtimus.obfuscation.jackson;
 
-import static com.github.robtimus.obfuscation.ObfuscatorUtils.checkBounds;
+import static com.github.robtimus.obfuscation.ObfuscatorUtils.checkStartAndEnd;
+import static com.github.robtimus.obfuscation.ObfuscatorUtils.copyTo;
 import static com.github.robtimus.obfuscation.ObfuscatorUtils.readAll;
+import static com.github.robtimus.obfuscation.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -76,7 +78,7 @@ public class JSONObfuscator extends PropertyObfuscator {
 
     @Override
     public CharSequence obfuscateText(CharSequence s, int start, int end) {
-        checkBounds(s, start, end);
+        checkStartAndEnd(s, start, end);
         StringBuilder sb = new StringBuilder(end - start);
         try {
             obfuscateText(s, start, end, sb);
@@ -89,17 +91,18 @@ public class JSONObfuscator extends PropertyObfuscator {
 
     @Override
     public void obfuscateText(CharSequence s, int start, int end, Appendable destination) throws IOException {
-        checkBounds(s, start, end);
+        checkStartAndEnd(s, start, end);
         @SuppressWarnings("resource")
-        Reader input = new CharSequenceReader(s, start, end);
+        Reader input = reader(s, start, end);
         obfuscateText(input, s, start, end, destination);
     }
 
     @Override
     public void obfuscateText(Reader input, Appendable destination) throws IOException {
+        StringBuilder contents = new StringBuilder();
         @SuppressWarnings("resource")
-        CopyingReader reader = new CopyingReader(input);
-        obfuscateText(reader, reader.contents, 0, -1, destination);
+        Reader reader = copyTo(input, contents);
+        obfuscateText(reader, contents, 0, -1, destination);
     }
 
     private void obfuscateText(Reader input, CharSequence s, int start, int end, Appendable destination) throws IOException {
