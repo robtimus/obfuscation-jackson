@@ -1,22 +1,44 @@
 {
-  "string": "string",
+  "string": "string\"int",
   "int": 123456,
   "float": 1234.56,
-  "boolean": true,
+  "booleanTrue": true,
+  "booleanFalse": false,
+  "null": null,
   "object": {
+    "string": "string\"int",
+    "int": 123456,
+    "float": 1234.56,
+    "booleanTrue": true,
+    "booleanFalse": false,
+    "null": null,
     "nested": [ {
       "prop1": "1",
       "prop2": "2"
     } ]
   },
   "array": [ [ "1", "2" ], {} ],
-  "null": null,
-  "notMatched": "123456",
+  "notMatchedString": "123456",
+  "notMatchedInt": 123456,
+  "notMatchedFloat": 1234.56,
+  "notMatchedBooleanTrue": true,
+  "notMatchedBooleanFalse": false,
+  "nonMatchedNull": null,
+  "nonMatchedObject": {
+    "notMatchedString": "123456",
+    "notMatchedInt": 123456,
+    "notMatchedFloat": 1234.56,
+    "notMatchedBooleanTrue": true,
+    "notMatchedBooleanFalse": false,
+    "nonMatchedNull": null
+  },
   "nested": [ {
-    "string": "string",
+    "string": "string\"int",
     "int": 123456,
     "float": 1234.56,
-    "boolean": true,
+    "booleanTrue": true,
+    "booleanFalse": false,
+    "null": null,
     "object": {
       "nested": [ {
         "prop1": "1

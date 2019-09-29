@@ -18,7 +18,7 @@
 package com.github.robtimus.obfuscation.jackson;
 
 import static com.github.robtimus.obfuscation.Obfuscator.fixedLength;
-import static com.github.robtimus.obfuscation.PropertyObfuscator.ofType;
+import static com.github.robtimus.obfuscation.Obfuscator.none;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.builder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.BufferedReader;
@@ -37,9 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import com.github.robtimus.obfuscation.Obfuscator;
-import com.github.robtimus.obfuscation.PropertyObfuscator.Builder;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.JSONBuilder;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.MalformedJSONStrategy;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
 
 @SuppressWarnings({ "javadoc", "nls" })
 @TestInstance(Lifecycle.PER_CLASS)
@@ -71,57 +69,27 @@ public class JSONObfuscatorTest {
     public class TruncatedJSON {
 
         @Nested
-        @DisplayName("discard remainder")
-        @TestInstance(Lifecycle.PER_CLASS)
-        public class DiscardRemainder {
+        @DisplayName("with warning")
+        public class WithWarning extends TruncatedJSONTest {
 
-            @Nested
-            @DisplayName("with warning")
-            public class WithWarning extends TruncatedJSONTest {
-
-                public WithWarning() {
-                    super("JSONObfuscator.expected.truncated.discard-remainder", true, MalformedJSONStrategy.DISCARD_REMAINDER);
-                }
-            }
-
-            @Nested
-            @DisplayName("without warning")
-            public class WithoutWarning extends TruncatedJSONTest {
-
-                public WithoutWarning() {
-                    super("JSONObfuscator.expected.truncated.discard-remainder.no-warning", false, MalformedJSONStrategy.DISCARD_REMAINDER);
-                }
+            public WithWarning() {
+                super("JSONObfuscator.expected.truncated", true);
             }
         }
 
         @Nested
-        @DisplayName("include remainder")
-        @TestInstance(Lifecycle.PER_CLASS)
-        public class IncludeRemainder {
+        @DisplayName("without warning")
+        public class WithoutWarning extends TruncatedJSONTest {
 
-            @Nested
-            @DisplayName("with warning")
-            public class WithWarning extends TruncatedJSONTest {
-
-                public WithWarning() {
-                    super("JSONObfuscator.expected.truncated.include-remainder", true, MalformedJSONStrategy.INCLUDE_REMAINDER);
-                }
-            }
-
-            @Nested
-            @DisplayName("without warning")
-            public class WithoutWarning extends TruncatedJSONTest {
-
-                public WithoutWarning() {
-                    super("JSONObfuscator.expected.truncated.include-remainder.no-warning", false, MalformedJSONStrategy.INCLUDE_REMAINDER);
-                }
+            public WithoutWarning() {
+                super("JSONObfuscator.expected.truncated.no-warning", false);
             }
         }
 
         private class TruncatedJSONTest extends ObfuscatorTest {
 
-            private TruncatedJSONTest(String expectedResource, boolean includeWarning, MalformedJSONStrategy strategy) {
-                super("JSONObfuscator.input.truncated", expectedResource, () -> createObfuscator(includeWarning, strategy));
+            protected TruncatedJSONTest(String expectedResource, boolean includeWarning) {
+                super("JSONObfuscator.input.truncated", expectedResource, () -> createObfuscator(includeWarning));
             }
         }
     }
@@ -132,7 +100,7 @@ public class JSONObfuscatorTest {
         private final String expected;
         private final Supplier<Obfuscator> obfuscatorSupplier;
 
-        private ObfuscatorTest(String inputResource, String expectedResource, Supplier<Obfuscator> obfuscatorSupplier) {
+        protected ObfuscatorTest(String inputResource, String expectedResource, Supplier<Obfuscator> obfuscatorSupplier) {
             this.input = readResource(inputResource);
             this.expected = readResource(expectedResource);
             this.obfuscatorSupplier = obfuscatorSupplier;
@@ -189,14 +157,16 @@ public class JSONObfuscatorTest {
     }
 
     private static Obfuscator createObfuscator() {
-        return createObfuscator(ofType(JSONObfuscator.TYPE));
+        return builder()
+                .transform(JSONObfuscatorTest::createObfuscator);
     }
 
-    private static Obfuscator createObfuscator(boolean includeWarning, MalformedJSONStrategy strategy) {
-        JSONBuilder builder = builder()
-                .includeMalformedJSONWarning(includeWarning)
-                .withMalformedJSONStrategy(strategy);
-        return createObfuscator(builder);
+    private static Obfuscator createObfuscator(boolean includeWarning) {
+        Builder builder = builder();
+        if (!includeWarning) {
+            builder = builder.withMalformedJSONWarning(null);
+        }
+        return builder.transform(JSONObfuscatorTest::createObfuscator);
     }
 
     private static Obfuscator createObfuscator(Builder builder) {
@@ -205,10 +175,12 @@ public class JSONObfuscatorTest {
                 .withProperty("string", obfuscator)
                 .withProperty("int", obfuscator)
                 .withProperty("float", obfuscator)
-                .withProperty("boolean", obfuscator)
+                .withProperty("booleanTrue", obfuscator)
+                .withProperty("booleanFalse", obfuscator)
                 .withProperty("object", obfuscator)
                 .withProperty("array", obfuscator)
                 .withProperty("null", obfuscator)
+                .withProperty("notObfuscated", none())
                 .build();
     }
 
