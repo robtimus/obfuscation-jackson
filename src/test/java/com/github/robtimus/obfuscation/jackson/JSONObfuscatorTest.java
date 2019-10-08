@@ -21,6 +21,7 @@ import static com.github.robtimus.obfuscation.Obfuscator.fixedLength;
 import static com.github.robtimus.obfuscation.Obfuscator.none;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.builder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -36,12 +37,42 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
 
 @SuppressWarnings({ "javadoc", "nls" })
 @TestInstance(Lifecycle.PER_CLASS)
 public class JSONObfuscatorTest {
+
+    @ParameterizedTest(name = "{1}")
+    @MethodSource
+    @DisplayName("equals(Object)")
+    public void testEquals(Obfuscator obfuscator, Object object, boolean expected) {
+        assertEquals(expected, obfuscator.equals(object));
+    }
+
+    Arguments[] testEquals() {
+        Obfuscator obfuscator = createObfuscator();
+        return new Arguments[] {
+                arguments(obfuscator, obfuscator, true),
+                arguments(obfuscator, null, false),
+                arguments(obfuscator, createObfuscator(), true),
+                arguments(obfuscator, builder().build(), false),
+                arguments(obfuscator, createObfuscator(builder().withMalformedJSONWarning(null)), false),
+                arguments(obfuscator, "foo", false),
+        };
+    }
+
+    @Test
+    @DisplayName("hashCode()")
+    public void testHashCode() {
+        Obfuscator obfuscator = createObfuscator();
+        assertEquals(obfuscator.hashCode(), obfuscator.hashCode());
+        assertEquals(obfuscator.hashCode(), createObfuscator().hashCode());
+    }
 
     @Nested
     @DisplayName("valid JSON")

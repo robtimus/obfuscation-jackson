@@ -24,6 +24,7 @@ import static com.github.robtimus.obfuscation.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonFactory;
@@ -268,6 +269,29 @@ public final class JSONObfuscator extends PropertyObfuscator {
     @Override
     public Writer streamTo(Appendable destination) {
         return new CachingObfuscatingWriter(this, destination);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!super.equals(o)) {
+            return false;
+        }
+        JSONObfuscator other = (JSONObfuscator) o;
+        return Objects.equals(malformedJSONWarning, other.malformedJSONWarning);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode() ^ Objects.hashCode(malformedJSONWarning);
+    }
+
+    @Override
+    @SuppressWarnings("nls")
+    public String toString() {
+        return getClass().getName()
+                + "[obfuscators=" + obfuscators()
+                + ",malformedJSONWarning=" + malformedJSONWarning
+                + "]";
     }
 
     /**
