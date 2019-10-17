@@ -33,6 +33,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.github.robtimus.obfuscation.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.Obfuscator;
+import com.github.robtimus.obfuscation.PropertyAwareBuilder;
 import com.github.robtimus.obfuscation.PropertyObfuscator;
 
 /**
@@ -308,7 +309,7 @@ public final class JSONObfuscator extends PropertyObfuscator {
      *
      * @author Rob Spoor
      */
-    public static final class Builder extends AbstractBuilder<Builder> {
+    public static final class Builder extends PropertyAwareBuilder<Builder, JSONObfuscator> {
 
         private String malformedJSONWarning = Messages.JSONObfuscator.malformedJSON.text.get();
 
