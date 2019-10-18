@@ -16,7 +16,6 @@
  */
 
 /**
-/**
  * Contains classes and interfaces for obfuscating text in JSON.
  */
 package com.github.robtimus.obfuscation.jackson;
