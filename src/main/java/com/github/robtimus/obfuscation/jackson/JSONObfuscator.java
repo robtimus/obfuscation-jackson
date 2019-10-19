@@ -24,6 +24,7 @@ import static com.github.robtimus.obfuscation.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,23 +35,24 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.github.robtimus.obfuscation.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.PropertyAwareBuilder;
-import com.github.robtimus.obfuscation.PropertyObfuscator;
 
 /**
  * An obfuscator that obfuscates JSON properties in {@link CharSequence CharSequences} or the contents of {@link Reader Readers}.
  *
  * @author Rob Spoor
  */
-public final class JSONObfuscator extends PropertyObfuscator {
+public final class JSONObfuscator extends Obfuscator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JSONObfuscator.class);
+
+    private final Map<String, Obfuscator> obfuscators;
 
     private final JsonFactory jsonFactory;
 
     private final String malformedJSONWarning;
 
     private JSONObfuscator(Builder builder) {
-        super(builder);
+        obfuscators = builder.obfuscators();
 
         jsonFactory = new JsonFactory();
         for (JsonParser.Feature feature : JsonParser.Feature.values()) {
@@ -100,7 +102,7 @@ public final class JSONObfuscator extends PropertyObfuscator {
             while ((token = context.nextToken()) != null) {
                 if (token == JsonToken.FIELD_NAME) {
                     String property = context.currentFieldName();
-                    Obfuscator obfuscator = getObfuscator(property);
+                    Obfuscator obfuscator = obfuscators.get(property);
                     if (obfuscator != null) {
                         obfuscateProperty(obfuscator, context);
                     }
@@ -274,23 +276,27 @@ public final class JSONObfuscator extends PropertyObfuscator {
 
     @Override
     public boolean equals(Object o) {
-        if (!super.equals(o)) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || o.getClass() != getClass()) {
             return false;
         }
         JSONObfuscator other = (JSONObfuscator) o;
-        return Objects.equals(malformedJSONWarning, other.malformedJSONWarning);
+        return obfuscators.equals(other.obfuscators)
+                && Objects.equals(malformedJSONWarning, other.malformedJSONWarning);
     }
 
     @Override
     public int hashCode() {
-        return super.hashCode() ^ Objects.hashCode(malformedJSONWarning);
+        return obfuscators.hashCode() ^ Objects.hashCode(malformedJSONWarning);
     }
 
     @Override
     @SuppressWarnings("nls")
     public String toString() {
         return getClass().getName()
-                + "[obfuscators=" + obfuscators()
+                + "[obfuscators=" + obfuscators
                 + ",malformedJSONWarning=" + malformedJSONWarning
                 + "]";
     }
