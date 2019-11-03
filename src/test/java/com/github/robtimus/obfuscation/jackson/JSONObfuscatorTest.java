@@ -151,7 +151,7 @@ public class JSONObfuscatorTest {
             Obfuscator obfuscator = obfuscatorSupplier.get();
 
             StringBuilder destination = new StringBuilder();
-            obfuscator.obfuscateText("x" + input + "x", 1, 1 + input.length(), destination);
+            obfuscator.obfuscateText("x" + input + "x", 1, 1 + input.length(), (Appendable) destination);
             assertEquals(expected, destination.toString());
         }
 

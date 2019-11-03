@@ -68,13 +68,8 @@ public final class JSONObfuscator extends Obfuscator {
     public CharSequence obfuscateText(CharSequence s, int start, int end) {
         checkStartAndEnd(s, start, end);
         StringBuilder sb = new StringBuilder(end - start);
-        try {
-            obfuscateText(s, start, end, sb);
-            return sb.toString();
-        } catch (IOException e) {
-            // will not occur
-            throw new IllegalStateException(e);
-        }
+        obfuscateText(s, start, end, sb);
+        return sb.toString();
     }
 
     @Override
