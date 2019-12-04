@@ -42,6 +42,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ObfuscationMode;
 
 @SuppressWarnings({ "javadoc", "nls" })
 @TestInstance(Lifecycle.PER_CLASS)
@@ -60,7 +61,9 @@ public class JSONObfuscatorTest {
                 arguments(obfuscator, obfuscator, true),
                 arguments(obfuscator, null, false),
                 arguments(obfuscator, createObfuscator(), true),
+                arguments(obfuscator, createObfuscator(builder().withCaseInsensitivePropertyNames(true)), false),
                 arguments(obfuscator, builder().build(), false),
+                arguments(obfuscator, createObfuscator(builder().withObfuscationMode(ObfuscationMode.SCALAR)), false),
                 arguments(obfuscator, createObfuscator(builder().withMalformedJSONWarning(null)), false),
                 arguments(obfuscator, "foo", false),
         };
@@ -77,10 +80,27 @@ public class JSONObfuscatorTest {
     @Nested
     @DisplayName("valid JSON")
     @TestInstance(Lifecycle.PER_CLASS)
-    public class ValidJSON extends ObfuscatorTest {
+    public class ValidJSON {
 
-        public ValidJSON() {
-            super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid", () -> createObfuscator());
+        @Nested
+        @DisplayName("ObfuscationMode.ALL")
+        @TestInstance(Lifecycle.PER_CLASS)
+        public class ObfuscatingAll extends ObfuscatorTest {
+
+            public ObfuscatingAll() {
+                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all", () -> createObfuscator());
+            }
+        }
+
+        @Nested
+        @DisplayName("ObfuscationMode.SCALAR")
+        @TestInstance(Lifecycle.PER_CLASS)
+        public class ObfuscatingScalars extends ObfuscatorTest {
+
+            public ObfuscatingScalars() {
+                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.scalar",
+                        () -> createObfuscator(builder().withObfuscationMode(ObfuscationMode.SCALAR)));
+            }
         }
     }
 

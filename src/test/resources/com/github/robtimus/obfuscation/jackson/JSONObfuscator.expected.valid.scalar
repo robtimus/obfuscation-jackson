@@ -1,0 +1,87 @@
+{
+  "string": "***",
+  "int": ***,
+  "float": ***,
+  "booleanTrue": ***,
+  "booleanFalse": ***,
+  "null": ***,
+  "object": {
+    "string": "***",
+    "int": ***,
+    "float": ***,
+    "booleanTrue": ***,
+    "booleanFalse": ***,
+    "null": ***,
+    "nested": [ {
+      "prop1": "1",
+      "prop2": "2"
+    } ]
+  },
+  "array": [ [ "1", "2" ], {} ],
+  "notMatchedString": "123456",
+  "notMatchedInt": 123456,
+  "notMatchedFloat": 1234.56,
+  "notMatchedBooleanTrue": true,
+  "notMatchedBooleanFalse": false,
+  "nonMatchedNull": null,
+  "nonMatchedObject": {
+    "notMatchedString": "123456",
+    "notMatchedInt": 123456,
+    "notMatchedFloat": 1234.56,
+    "notMatchedBooleanTrue": true,
+    "notMatchedBooleanFalse": false,
+    "nonMatchedNull": null
+  },
+  "nested": [ {
+    "string": "***",
+    "int": ***,
+    "float": ***,
+    "booleanTrue": ***,
+    "booleanFalse": ***,
+    "null": ***,
+    "object": {
+      "string": "***",
+      "int": ***,
+      "float": ***,
+      "booleanTrue": ***,
+      "booleanFalse": ***,
+      "nested": [ {
+        "prop1": "1",
+        "prop2": "2"
+      } ]
+    },
+    "array": [ [ "1", "2" ], {} ],
+    "notMatchedString": "123456",
+    "notMatchedInt": 123456,
+    "notMatchedFloat": 1234.56,
+    "notMatchedBooleanTrue": true,
+    "notMatchedBooleanFalse": false,
+    "nonMatchedNull": null
+  } ],
+  "notObfuscated": {
+    "string": "***",
+    "int": ***,
+    "float": ***,
+    "booleanTrue": ***,
+    "booleanFalse": ***,
+    "null": ***,
+    "object": {
+      "string": "***",
+      "int": ***,
+      "float": ***,
+      "booleanTrue": ***,
+      "booleanFalse": ***,
+      "nested": [ {
+        "prop1": "1",
+        "prop2": "2"
+      } ]
+    },
+    "array": [ [ "1", "2" ], {} ],
+    "notMatchedString": "123456",
+    "notMatchedInt": 123456,
+    "notMatchedFloat": 1234.56,
+    "notMatchedBooleanTrue": true,
+    "notMatchedBooleanFalse": false,
+    "nonMatchedNull": null
+  }
+}
