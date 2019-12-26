@@ -212,7 +212,6 @@ public final class JSONObfuscator extends Obfuscator {
             this.textOffset = start;
             this.textEnd = end;
             this.textIndex = start;
-            this.tokenEnd = start;
             this.destination = destination;
         }
 
