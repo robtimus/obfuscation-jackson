@@ -61,7 +61,6 @@ public class JSONObfuscatorTest {
                 arguments(obfuscator, obfuscator, true),
                 arguments(obfuscator, null, false),
                 arguments(obfuscator, createObfuscator(), true),
-                arguments(obfuscator, createObfuscator(builder().withCaseInsensitivePropertyNames(true)), false),
                 arguments(obfuscator, builder().build(), false),
                 arguments(obfuscator, createObfuscator(builder().withObfuscationMode(ObfuscationMode.SCALAR)), false),
                 arguments(obfuscator, createObfuscator(builder().withMalformedJSONWarning(null)), false),
