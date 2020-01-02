@@ -226,6 +226,7 @@ public final class JSONObfuscator extends Obfuscator {
         private void appendUntilToken(JsonToken token) throws IOException {
             updateTokenFields(token);
             destination.append(text, textIndex, tokenStart);
+            textIndex = tokenStart;
         }
 
         private void obfuscateUntilToken(JsonToken token, Obfuscator obfuscator) throws IOException {
@@ -243,6 +244,7 @@ public final class JSONObfuscator extends Obfuscator {
         private void appendRemainder() throws IOException {
             int end = textEnd == -1 ? text.length() : textEnd;
             destination.append(text, textIndex, end);
+            textIndex = end;
         }
 
         private void updateTokenFields(JsonToken token) throws IOException {
