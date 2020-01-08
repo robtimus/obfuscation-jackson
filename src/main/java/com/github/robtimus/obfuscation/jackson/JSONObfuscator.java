@@ -1,6 +1,6 @@
 /*
  * JSONObfuscator.java
- * Copyright 2019 Rob Spoor
+ * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 
 package com.github.robtimus.obfuscation.jackson;
 
+import static com.github.robtimus.obfuscation.CaseSensitivity.CASE_SENSITIVE;
 import static com.github.robtimus.obfuscation.ObfuscatorUtils.checkStartAndEnd;
 import static com.github.robtimus.obfuscation.ObfuscatorUtils.copyTo;
 import static com.github.robtimus.obfuscation.ObfuscatorUtils.discardAll;
@@ -35,6 +36,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.github.robtimus.obfuscation.CachingObfuscatingWriter;
+import com.github.robtimus.obfuscation.CaseSensitivity;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.ObfuscatorUtils.MapBuilder;
 
@@ -367,15 +369,16 @@ public final class JSONObfuscator extends Obfuscator {
 
         /**
          * Adds a property to obfuscate.
-         * This method is an alias for {@link #withProperty(String, Obfuscator, boolean) withProperty(property, obfuscator, true)}.
+         * This method is an alias for {@link #withProperty(String, Obfuscator, CaseSensitivity) withProperty(property, obfuscator, CASE_SENSITIVE)}.
          *
          * @param property The name of the property. It will be treated case sensitively.
          * @param obfuscator The obfuscator to use for obfuscating the property.
          * @return This object.
          * @throws NullPointerException If the given property name or obfuscator is {@code null}.
+         * @throws IllegalArgumentException If a property with the same name and the same case sensitivity was already added.
          */
         public Builder withProperty(String property, Obfuscator obfuscator) {
-            return withProperty(property, obfuscator, true);
+            return withProperty(property, obfuscator, CASE_SENSITIVE);
         }
 
         /**
@@ -383,13 +386,13 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @param property The name of the property.
          * @param obfuscator The obfuscator to use for obfuscating the property.
-         * @param caseSensitive {@code true} if the property name should be treated case sensitively,
-         *                          or {@code false} if it should be treated case insensitively.
+         * @param caseSensitivity The case sensitivity for the key.
          * @return This object.
-         * @throws NullPointerException If the given property name or obfuscator is {@code null}.
+         * @throws NullPointerException If the given property name, obfuscator or case sensitivity is {@code null}.
+         * @throws IllegalArgumentException If a property with the same name and the same case sensitivity was already added.
          */
-        public Builder withProperty(String property, Obfuscator obfuscator, boolean caseSensitive) {
-            obfuscators.withEntry(property, obfuscator, caseSensitive);
+        public Builder withProperty(String property, Obfuscator obfuscator, CaseSensitivity caseSensitivity) {
+            obfuscators.withEntry(property, obfuscator, caseSensitivity);
             return this;
         }
 

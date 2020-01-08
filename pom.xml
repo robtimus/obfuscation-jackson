@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Copyright 2019 Rob Spoor
+  Copyright 2020 Rob Spoor
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
   <name>obfuscation-jackson</name>
   <description>Provides functionality for obfuscating JSON using Jackson</description>
   <url>https://robtimus.github.io/obfuscation-jackson/</url>
-  <inceptionYear>2019</inceptionYear>
+  <inceptionYear>2020</inceptionYear>
 
   <licenses>
     <license>
@@ -296,7 +296,7 @@
               <className>com.github.robtimus.obfuscation.jackson.Messages</className>
               <licenseText>Apache-2.0</licenseText>
               <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
-              <licenseCopyrightYear>2019</licenseCopyrightYear>
+              <licenseCopyrightYear>2020</licenseCopyrightYear>
               <publicVisibility>false</publicVisibility>
               <suppressWarnings>nls</suppressWarnings>
             </configuration>
