@@ -22,6 +22,9 @@ import static com.github.robtimus.obfuscation.Obfuscator.none;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.builder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -169,23 +172,31 @@ public class JSONObfuscatorTest {
         public void testObfuscateTextCharSequenceToAppendable() throws IOException {
             Obfuscator obfuscator = obfuscatorSupplier.get();
 
-            StringBuilder destination = new StringBuilder();
-            obfuscator.obfuscateText("x" + input + "x", 1, 1 + input.length(), (Appendable) destination);
+            StringWriter destination = spy(new StringWriter());
+            obfuscator.obfuscateText("x" + input + "x", 1, 1 + input.length(), destination);
             assertEquals(expected, destination.toString());
+            verify(destination, never()).close();
         }
 
         @Test
         @DisplayName("obfuscateText(Reader, Appendable)")
+        @SuppressWarnings("resource")
         public void testObfuscateTextReaderToAppendable() throws IOException {
             Obfuscator obfuscator = obfuscatorSupplier.get();
 
-            StringBuilder destination = new StringBuilder();
-            obfuscator.obfuscateText(new StringReader(input), destination);
+            StringWriter destination = spy(new StringWriter());
+            Reader reader = spy(new StringReader(input));
+            obfuscator.obfuscateText(reader, destination);
             assertEquals(expected, destination.toString());
+            verify(reader, never()).close();
+            verify(destination, never()).close();
 
-            destination.delete(0, destination.length());
-            obfuscator.obfuscateText(new BufferedReader(new StringReader(input)), destination);
+            destination.getBuffer().delete(0, destination.getBuffer().length());
+            reader = spy(new BufferedReader(new StringReader(input)));
+            obfuscator.obfuscateText(reader, destination);
             assertEquals(expected, destination.toString());
+            verify(reader, never()).close();
+            verify(destination, never()).close();
         }
 
         @Test
@@ -193,7 +204,7 @@ public class JSONObfuscatorTest {
         public void testStreamTo() throws IOException {
             Obfuscator obfuscator = obfuscatorSupplier.get();
 
-            Writer writer = new StringWriter();
+            Writer writer = spy(new StringWriter());
             try (Writer w = obfuscator.streamTo(writer)) {
                 int index = 0;
                 while (index < input.length()) {
@@ -203,6 +214,7 @@ public class JSONObfuscatorTest {
                 }
             }
             assertEquals(expected, writer.toString());
+            verify(writer, never()).close();
         }
     }
 

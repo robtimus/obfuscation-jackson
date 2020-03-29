@@ -117,27 +117,28 @@ public final class JSONObfuscator extends Obfuscator {
     }
 
     private void obfuscateText(Reader input, CharSequence s, int start, int end, Appendable destination) throws IOException {
-        @SuppressWarnings("resource")
-        JsonParser parser = jsonFactory.createParser(input);
-        Context context = new Context(parser, s, start, end, destination);
-        try {
-            JsonToken token;
-            while ((token = context.nextToken()) != null) {
-                if (token == JsonToken.FIELD_NAME) {
-                    String property = context.currentFieldName();
-                    Obfuscator obfuscator = obfuscators.get(property);
-                    if (obfuscator != null) {
-                        obfuscateProperty(obfuscator, context);
+        // closing parser will not close input because it's considered to be unmanaged and Feature.AUTO_CLOSE_SOURCE is disabled explicitly
+        try (JsonParser parser = jsonFactory.createParser(input)) {
+            Context context = new Context(parser, s, start, end, destination);
+            try {
+                JsonToken token;
+                while ((token = context.nextToken()) != null) {
+                    if (token == JsonToken.FIELD_NAME) {
+                        String property = context.currentFieldName();
+                        Obfuscator obfuscator = obfuscators.get(property);
+                        if (obfuscator != null) {
+                            obfuscateProperty(obfuscator, context);
+                        }
                     }
                 }
-            }
-            // read the remainder so the final append will include all text
-            discardAll(input);
-            context.appendRemainder();
-        } catch (JsonParseException e) {
-            LOGGER.warn(Messages.JSONObfuscator.malformedJSON.warning.get(), e);
-            if (malformedJSONWarning != null) {
-                destination.append(malformedJSONWarning);
+                // read the remainder so the final append will include all text
+                discardAll(input);
+                context.appendRemainder();
+            } catch (JsonParseException e) {
+                LOGGER.warn(Messages.JSONObfuscator.malformedJSON.warning.get(), e);
+                if (malformedJSONWarning != null) {
+                    destination.append(malformedJSONWarning);
+                }
             }
         }
     }
