@@ -532,8 +532,8 @@ public final class JSONObfuscator extends Obfuscator {
         private String malformedJSONWarning;
 
         // default settings
-        private boolean obfuscateObjectsByDefault = true;
-        private boolean obfuscateArraysByDefault = true;
+        private boolean obfuscateObjectsByDefault;
+        private boolean obfuscateArraysByDefault;
 
         // per property settings
         private String property;
@@ -545,6 +545,9 @@ public final class JSONObfuscator extends Obfuscator {
         private ObfuscatorBuilder() {
             properties = new MapBuilder<>();
             malformedJSONWarning = Messages.JSONObfuscator.malformedJSON.text.get();
+
+            obfuscateObjectsByDefault = true;
+            obfuscateArraysByDefault = true;
         }
 
         @Override
@@ -637,13 +640,6 @@ public final class JSONObfuscator extends Obfuscator {
             return this;
         }
 
-        /**
-         * Sets the warning to include if a {@link JsonParseException} is thrown.
-         * This can be used to override the default message. Use {@code null} to omit the warning.
-         *
-         * @param warning The warning to include.
-         * @return This object.
-         */
         @Override
         public Builder withMalformedJSONWarning(String warning) {
             malformedJSONWarning = warning;
