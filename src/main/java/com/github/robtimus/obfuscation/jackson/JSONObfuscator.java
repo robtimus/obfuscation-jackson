@@ -358,24 +358,24 @@ public final class JSONObfuscator extends Obfuscator {
          * <p>
          * Note that this will not change the case sensitivity of any property that was already added.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
-        public abstract PropertyConfigurer caseSensitiveByDefault();
+        public abstract Builder caseSensitiveByDefault();
 
         /**
          * Sets the default case sensitivity for new entries to {@link CaseSensitivity#CASE_INSENSITIVE}.
          * <p>
          * Note that this will not change the case sensitivity of any entry that was already added.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
-        public abstract PropertyConfigurer caseInsensitiveByDefault();
+        public abstract Builder caseInsensitiveByDefault();
 
         /**
          * Indicates that by default properties will not be obfuscated if they are JSON objects or arrays.
          * This method is shorthand for calling both {@link #excludeObjectsByDefault()} and {@link #excludeArraysByDefault()}.
          * <p>
-         * Note that this will not what will be obfuscated for any property that was already added.
+         * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
@@ -388,7 +388,7 @@ public final class JSONObfuscator extends Obfuscator {
          * Indicates that by default properties will not be obfuscated if they are JSON objects.
          * This can be overridden per property using {@link PropertyConfigurer#excludeObjects()}
          * <p>
-         * Note that this will not what will be obfuscated for any property that was already added.
+         * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
@@ -398,17 +398,17 @@ public final class JSONObfuscator extends Obfuscator {
          * Indicates that by default properties will not be obfuscated if they are JSON arrays.
          * This can be overridden per property using {@link PropertyConfigurer#excludeArrays()}
          * <p>
-         * Note that this will not what will be obfuscated for any property that was already added.
+         * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
         public abstract Builder excludeArraysByDefault();
 
         /**
-         * Indicates that by default properties will be obfuscated if they are JSON objects or arrays.
+         * Indicates that by default properties will be obfuscated if they are JSON objects or arrays (default).
          * This method is shorthand for calling both {@link #includeObjectsByDefault()} and {@link #includeArraysByDefault()}.
          * <p>
-         * Note that this will not what will be obfuscated for any property that was already added.
+         * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
@@ -418,20 +418,20 @@ public final class JSONObfuscator extends Obfuscator {
         }
 
         /**
-         * Indicates that by default properties will be obfuscated if they are JSON objects.
+         * Indicates that by default properties will be obfuscated if they are JSON objects (default).
          * This can be overridden per property using {@link PropertyConfigurer#excludeObjects()}
          * <p>
-         * Note that this will not what will be obfuscated for any property that was already added.
+         * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
         public abstract Builder includeObjectsByDefault();
 
         /**
-         * Indicates that by default properties will be obfuscated if they are JSON arrays.
+         * Indicates that by default properties will be obfuscated if they are JSON arrays (default).
          * This can be overridden per property using {@link PropertyConfigurer#excludeArrays()}
          * <p>
-         * Note that this will not what will be obfuscated for any property that was already added.
+         * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
@@ -581,13 +581,13 @@ public final class JSONObfuscator extends Obfuscator {
         }
 
         @Override
-        public PropertyConfigurer caseSensitiveByDefault() {
+        public Builder caseSensitiveByDefault() {
             properties.caseSensitiveByDefault();
             return this;
         }
 
         @Override
-        public PropertyConfigurer caseInsensitiveByDefault() {
+        public Builder caseInsensitiveByDefault() {
             properties.caseInsensitiveByDefault();
             return this;
         }
