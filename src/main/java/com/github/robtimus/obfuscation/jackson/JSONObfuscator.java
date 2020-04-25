@@ -149,6 +149,7 @@ public final class JSONObfuscator extends Obfuscator {
             break;
         default:
             // do nothing
+            break;
         }
     }
 
