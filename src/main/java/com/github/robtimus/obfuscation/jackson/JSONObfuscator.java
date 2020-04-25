@@ -367,9 +367,9 @@ public final class JSONObfuscator extends Obfuscator {
         public abstract Builder caseSensitiveByDefault();
 
         /**
-         * Sets the default case sensitivity for new entries to {@link CaseSensitivity#CASE_INSENSITIVE}.
+         * Sets the default case sensitivity for new properties to {@link CaseSensitivity#CASE_INSENSITIVE}.
          * <p>
-         * Note that this will not change the case sensitivity of any entry that was already added.
+         * Note that this will not change the case sensitivity of any property that was already added.
          *
          * @return This object.
          */
