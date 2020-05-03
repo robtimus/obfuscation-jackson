@@ -186,7 +186,7 @@
               <!-- Use an HTTPS URL to the JSE docs -->
               <link>https://docs.oracle.com/javase/8/docs/api/</link>
               <link>https://robtimus.github.io/obfuscation-core/apidocs/</link>
-              <link>http://fasterxml.github.io/jackson-core/javadoc/${version.jackson.javadoc}/</link>
+              <link>https://fasterxml.github.io/jackson-core/javadoc/${version.jackson.javadoc}/</link>
             </links>
           </configuration>
         </plugin>
