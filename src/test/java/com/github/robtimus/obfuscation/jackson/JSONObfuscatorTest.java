@@ -194,7 +194,7 @@ class JSONObfuscatorTest {
         }
     }
 
-    static class ObfuscatorTest {
+    abstract static class ObfuscatorTest {
 
         private final String input;
         private final String expected;

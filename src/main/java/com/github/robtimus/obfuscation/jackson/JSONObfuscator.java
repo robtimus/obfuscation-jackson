@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.support.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.support.CaseSensitivity;
@@ -92,192 +91,20 @@ public final class JSONObfuscator extends Obfuscator {
 
     private void obfuscateText(Reader input, CharSequence s, int start, int end, Appendable destination) throws IOException {
         // closing parser will not close input because it's considered to be unmanaged and Feature.AUTO_CLOSE_SOURCE is disabled explicitly
-        try (JsonParser parser = jsonFactory.createParser(input)) {
-            Context context = new Context(parser, s, start, end, destination);
+        try (ObfuscatingJsonParser parser = new ObfuscatingJsonParser(jsonFactory.createParser(input), s, start, end, destination, properties)) {
             try {
-                JsonToken token;
-                while ((token = context.nextToken()) != null) {
-                    if (token == JsonToken.FIELD_NAME) {
-                        String property = context.currentFieldName();
-                        PropertyConfig propertyConfig = properties.get(property);
-                        if (propertyConfig != null) {
-                            obfuscateProperty(propertyConfig, context);
-                        }
-                    }
+                while (parser.nextToken() != null) {
+                    // do nothing; the parser will take care of obfuscation
                 }
                 // read the remainder so the final append will include all text
                 discardAll(input);
-                context.appendRemainder();
+                parser.appendRemainder();
             } catch (JsonParseException e) {
                 LOGGER.warn(Messages.JSONObfuscator.malformedJSON.warning.get(), e);
                 if (malformedJSONWarning != null) {
                     destination.append(malformedJSONWarning);
                 }
             }
-        }
-    }
-
-    private void obfuscateProperty(PropertyConfig propertyConfig, Context context) throws IOException {
-        JsonToken token = context.nextToken();
-        switch (token) {
-        case START_ARRAY:
-            if (!propertyConfig.obfuscateArrays) {
-                // there is an obfuscator for the array property, but the obfuscation mode prohibits obfuscating arrays;
-                // abort and continue with the next property
-                return;
-            }
-            context.appendUntilToken(token);
-            obfuscateNested(propertyConfig.obfuscator, context, JsonToken.START_ARRAY, JsonToken.END_ARRAY);
-            break;
-        case START_OBJECT:
-            if (!propertyConfig.obfuscateObjects) {
-                // there is an obfuscator for the object property, but the obfuscation mode prohibits obfuscating objects;
-                // abort and continue with the next property
-                return;
-            }
-            context.appendUntilToken(token);
-            obfuscateNested(propertyConfig.obfuscator, context, JsonToken.START_OBJECT, JsonToken.END_OBJECT);
-            break;
-        case VALUE_STRING:
-        case VALUE_NUMBER_INT:
-        case VALUE_NUMBER_FLOAT:
-        case VALUE_TRUE:
-        case VALUE_FALSE:
-        case VALUE_NULL:
-            context.appendUntilToken(token);
-            obfuscateScalar(propertyConfig.obfuscator, context);
-            break;
-        default:
-            // do nothing
-            break;
-        }
-    }
-
-    private void obfuscateNested(Obfuscator obfuscator, Context context, JsonToken beginToken, JsonToken endToken) throws IOException {
-        int depth = 1;
-        JsonToken token = null;
-        while (depth > 0) {
-            token = context.nextToken();
-            if (token == beginToken) {
-                depth++;
-            } else if (token == endToken) {
-                depth--;
-            }
-        }
-        context.obfuscateUntilToken(token, obfuscator);
-    }
-
-    private void obfuscateScalar(Obfuscator obfuscator, Context context) throws IOException {
-        context.obfuscateCurrentToken(obfuscator);
-    }
-
-    private static final class Context {
-        private final JsonParser parser;
-        private final CharSequence text;
-        private final Appendable destination;
-
-        private final int textOffset;
-        private final int textEnd;
-        private int textIndex;
-
-        private String tokenValue;
-        private int tokenStart;
-        private int tokenEnd;
-
-        private Context(JsonParser parser, CharSequence source, int start, int end, Appendable destination) {
-            this.parser = parser;
-            this.text = source;
-            this.textOffset = start;
-            this.textEnd = end;
-            this.textIndex = start;
-            this.destination = destination;
-        }
-
-        private JsonToken nextToken() throws IOException {
-            return parser.nextToken();
-        }
-
-        private String currentFieldName() throws IOException {
-            return parser.getCurrentName();
-        }
-
-        private void appendUntilToken(JsonToken token) throws IOException {
-            updateTokenFields(token);
-            destination.append(text, textIndex, tokenStart);
-            textIndex = tokenStart;
-        }
-
-        private void obfuscateUntilToken(JsonToken token, Obfuscator obfuscator) throws IOException {
-            int originalTokenStart = tokenStart;
-            updateTokenFields(token);
-            obfuscator.obfuscateText(text, originalTokenStart, tokenEnd, destination);
-            textIndex = tokenEnd;
-        }
-
-        private void obfuscateCurrentToken(Obfuscator obfuscator) throws IOException {
-            obfuscator.obfuscateText(tokenValue, destination);
-            textIndex = tokenEnd;
-        }
-
-        private void appendRemainder() throws IOException {
-            int end = textEnd == -1 ? text.length() : textEnd;
-            destination.append(text, textIndex, end);
-            textIndex = end;
-        }
-
-        private void updateTokenFields(JsonToken token) throws IOException {
-            switch (token) {
-            case START_ARRAY:
-            case END_ARRAY:
-            case START_OBJECT:
-            case END_OBJECT:
-            case VALUE_TRUE:
-            case VALUE_FALSE:
-            case VALUE_NULL:
-                tokenValue = token.asString();
-                tokenStart = tokenStart();
-                tokenEnd = tokenEnd();
-                break;
-            case VALUE_STRING:
-                tokenValue = parser.getValueAsString();
-                tokenStart = stringValueStart();
-                tokenEnd = stringValueEnd();
-                break;
-            case VALUE_NUMBER_INT:
-            case VALUE_NUMBER_FLOAT:
-                tokenValue = parser.getValueAsString();
-                tokenStart = tokenStart();
-                tokenEnd = tokenEnd();
-                break;
-            default:
-                throw new IllegalStateException(Messages.JSONObfuscator.unexpectedToken.get(token));
-            }
-        }
-
-        private int tokenStart() {
-            return textOffset + (int) parser.getTokenLocation().getCharOffset();
-        }
-
-        private int tokenEnd() {
-            return textOffset + (int) parser.getCurrentLocation().getCharOffset();
-        }
-
-        private int stringValueStart() {
-            int start = tokenStart();
-            // start points to the opening ", skip past it
-            if (text.charAt(start) == '"') {
-                start++;
-            }
-            return start;
-        }
-
-        private int stringValueEnd() {
-            int end = tokenEnd();
-            // end points to the closing ", skip back past it
-            if (text.charAt(end - 1) == '"') {
-                end--;
-            }
-            return end;
         }
     }
 
@@ -681,42 +508,6 @@ public final class JSONObfuscator extends Obfuscator {
             addLastProperty();
 
             return new JSONObfuscator(this);
-        }
-    }
-
-    private static final class PropertyConfig {
-
-        private final Obfuscator obfuscator;
-        private final boolean obfuscateObjects;
-        private final boolean obfuscateArrays;
-
-        private PropertyConfig(Obfuscator obfuscator, boolean obfuscateObjects, boolean obfuscateArrays) {
-            this.obfuscator = Objects.requireNonNull(obfuscator);
-            this.obfuscateObjects = obfuscateObjects;
-            this.obfuscateArrays = obfuscateArrays;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            // null and different types should not occur
-            PropertyConfig other = (PropertyConfig) o;
-            return obfuscator.equals(other.obfuscator)
-                    && obfuscateObjects == other.obfuscateObjects
-                    && obfuscateArrays == other.obfuscateArrays;
-        }
-
-        @Override
-        public int hashCode() {
-            return obfuscator.hashCode() ^ Boolean.hashCode(obfuscateObjects) ^ Boolean.hashCode(obfuscateArrays);
-        }
-
-        @Override
-        @SuppressWarnings("nls")
-        public String toString() {
-            return "[obfuscator=" + obfuscator
-                    + ",obfuscateObjects=" + obfuscateObjects
-                    + ",obfuscateArrays=" + obfuscateArrays
-                    + "]";
         }
     }
 }
