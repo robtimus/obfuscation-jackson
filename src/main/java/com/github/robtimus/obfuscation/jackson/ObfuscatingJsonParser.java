@@ -190,7 +190,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
 
             currentProperty = null;
         }
-        // else not obfuscating, or in a nested object array that's being obfuscated; do nothing
+        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
     }
 
     private void valueNumber() throws IOException {
@@ -201,7 +201,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
 
             currentProperty = null;
         }
-        // else not obfuscating, or in a nested object array that's being obfuscated; do nothing
+        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
     }
 
     private void valueBoolean(JsonToken token) throws IOException {
@@ -212,7 +212,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
 
             currentProperty = null;
         }
-        // else not obfuscating, or in a nested object array that's being obfuscated; do nothing
+        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
     }
 
     private void valueNull() throws IOException {
@@ -223,7 +223,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
 
             currentProperty = null;
         }
-        // else not obfuscating, or in a nested object array that's being obfuscated; do nothing
+        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
     }
 
     private void updateStringTokenFields() throws IOException {
