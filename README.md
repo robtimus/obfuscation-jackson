@@ -10,7 +10,7 @@ To create a JSON obfuscator, simply create a builder, add properties to it, and 
 
 ## Disabling obfuscation for objects and/or arrays
 
-By default, a JSON obfuscator will obfuscate all properties; for object and array properties, their contents in the document including opening and closing characters will be obfuscated. This can be turned and or off for all properties, or per property. For example:
+By default, a JSON obfuscator will obfuscate all properties; for object and array properties, their contents in the document including opening and closing characters will be obfuscated. This can be turned on or off for all properties, or per property. For example:
 
     Obfuscator obfuscator = JSONObfuscator.builder()
             .scalarsOnlyByDefault()

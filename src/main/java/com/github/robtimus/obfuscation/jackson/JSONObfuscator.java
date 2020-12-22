@@ -218,7 +218,7 @@ public final class JSONObfuscator extends Obfuscator {
 
         /**
          * Indicates that by default properties will not be obfuscated if they are JSON objects.
-         * This can be overridden per property using {@link PropertyConfigurer#excludeObjects()}
+         * This can be overridden per property using {@link PropertyConfigurer#includeObjects()}
          * <p>
          * Note that this will not change what will be obfuscated for any property that was already added.
          *
@@ -228,7 +228,7 @@ public final class JSONObfuscator extends Obfuscator {
 
         /**
          * Indicates that by default properties will not be obfuscated if they are JSON arrays.
-         * This can be overridden per property using {@link PropertyConfigurer#excludeArrays()}
+         * This can be overridden per property using {@link PropertyConfigurer#includeArrays()}
          * <p>
          * Note that this will not change what will be obfuscated for any property that was already added.
          *
