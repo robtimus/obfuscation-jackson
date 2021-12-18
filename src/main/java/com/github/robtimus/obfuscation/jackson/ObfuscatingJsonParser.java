@@ -62,39 +62,39 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
             return token;
         }
         switch (token) {
-        case START_OBJECT:
-            startObject();
-            break;
-        case END_OBJECT:
-            endObject();
-            break;
-        case START_ARRAY:
-            startArray();
-            break;
-        case END_ARRAY:
-            endArray();
-            break;
-        case FIELD_NAME:
-            fieldName();
-            break;
-        case VALUE_STRING:
-            valueString();
-            break;
-        case VALUE_NUMBER_INT:
-        case VALUE_NUMBER_FLOAT:
-            valueNumber();
-            break;
-        case VALUE_TRUE:
-            valueBoolean(token);
-            break;
-        case VALUE_FALSE:
-            valueBoolean(token);
-            break;
-        case VALUE_NULL:
-            valueNull();
-            break;
-        default:
-            break;
+            case START_OBJECT:
+                startObject();
+                break;
+            case END_OBJECT:
+                endObject();
+                break;
+            case START_ARRAY:
+                startArray();
+                break;
+            case END_ARRAY:
+                endArray();
+                break;
+            case FIELD_NAME:
+                fieldName();
+                break;
+            case VALUE_STRING:
+                valueString();
+                break;
+            case VALUE_NUMBER_INT:
+            case VALUE_NUMBER_FLOAT:
+                valueNumber();
+                break;
+            case VALUE_TRUE:
+                valueBoolean(token);
+                break;
+            case VALUE_FALSE:
+                valueBoolean(token);
+                break;
+            case VALUE_NULL:
+                valueNull();
+                break;
+            default:
+                break;
         }
         return token;
     }
