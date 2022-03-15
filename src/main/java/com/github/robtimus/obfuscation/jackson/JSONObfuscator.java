@@ -17,8 +17,10 @@
 
 package com.github.robtimus.obfuscation.jackson;
 
+import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.appendAtMost;
 import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.checkStartAndEnd;
 import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.copyTo;
+import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.counting;
 import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.discardAll;
 import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.reader;
 import java.io.IOException;
@@ -35,6 +37,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.support.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.support.CaseSensitivity;
+import com.github.robtimus.obfuscation.support.CountingReader;
+import com.github.robtimus.obfuscation.support.LimitAppendable;
 import com.github.robtimus.obfuscation.support.MapBuilder;
 
 /**
@@ -52,6 +56,9 @@ public final class JSONObfuscator extends Obfuscator {
 
     private final String malformedJSONWarning;
 
+    private final long limit;
+    private final String truncatedIndicator;
+
     private JSONObfuscator(ObfuscatorBuilder builder) {
         properties = builder.properties();
 
@@ -63,6 +70,9 @@ public final class JSONObfuscator extends Obfuscator {
         jsonFactory.disable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
 
         malformedJSONWarning = builder.malformedJSONWarning;
+
+        limit = builder.limit;
+        truncatedIndicator = builder.truncatedIndicator;
     }
 
     @Override
@@ -77,23 +87,31 @@ public final class JSONObfuscator extends Obfuscator {
     public void obfuscateText(CharSequence s, int start, int end, Appendable destination) throws IOException {
         checkStartAndEnd(s, start, end);
         @SuppressWarnings("resource")
-        Reader input = reader(s, start, end);
-        obfuscateText(input, s, start, end, destination);
+        Reader reader = reader(s, start, end);
+        LimitAppendable appendable = appendAtMost(destination, limit);
+        obfuscateText(reader, s, start, end, appendable);
+        if (appendable.limitExceeded() && truncatedIndicator != null) {
+            destination.append(String.format(truncatedIndicator, end - start));
+        }
     }
 
     @Override
     public void obfuscateText(Reader input, Appendable destination) throws IOException {
         StringBuilder contents = new StringBuilder();
         @SuppressWarnings("resource")
-        Reader reader = copyTo(input, contents);
-        obfuscateText(reader, contents, 0, -1, destination);
+        CountingReader reader = counting(copyTo(input, contents));
+        LimitAppendable appendable = appendAtMost(destination, limit);
+        obfuscateText(reader, contents, 0, -1, appendable);
+        if (appendable.limitExceeded() && truncatedIndicator != null) {
+            destination.append(String.format(truncatedIndicator, reader.count()));
+        }
     }
 
-    private void obfuscateText(Reader input, CharSequence s, int start, int end, Appendable destination) throws IOException {
+    private void obfuscateText(Reader input, CharSequence s, int start, int end, LimitAppendable destination) throws IOException {
         // closing parser will not close input because it's considered to be unmanaged and Feature.AUTO_CLOSE_SOURCE is disabled explicitly
         try (ObfuscatingJsonParser parser = new ObfuscatingJsonParser(jsonFactory.createParser(input), s, start, end, destination, properties)) {
             try {
-                while (parser.nextToken() != null) {
+                while (parser.nextToken() != null && !destination.limitExceeded()) {
                     // do nothing; the parser will take care of obfuscation
                 }
                 // read the remainder so the final append will include all text
@@ -123,12 +141,14 @@ public final class JSONObfuscator extends Obfuscator {
         }
         JSONObfuscator other = (JSONObfuscator) o;
         return properties.equals(other.properties)
-                && Objects.equals(malformedJSONWarning, other.malformedJSONWarning);
+                && Objects.equals(malformedJSONWarning, other.malformedJSONWarning)
+                && limit == other.limit
+                && Objects.equals(truncatedIndicator, other.truncatedIndicator);
     }
 
     @Override
     public int hashCode() {
-        return properties.hashCode() ^ Objects.hashCode(malformedJSONWarning);
+        return properties.hashCode() ^ Objects.hashCode(malformedJSONWarning) ^ Long.hashCode(limit) ^ Objects.hashCode(truncatedIndicator);
     }
 
     @Override
@@ -137,6 +157,8 @@ public final class JSONObfuscator extends Obfuscator {
         return getClass().getName()
                 + "[properties=" + properties
                 + ",malformedJSONWarning=" + malformedJSONWarning
+                + ",limit=" + limit
+                + ",truncatedIndicator=" + truncatedIndicator
                 + "]";
     }
 
@@ -154,11 +176,7 @@ public final class JSONObfuscator extends Obfuscator {
      *
      * @author Rob Spoor
      */
-    public abstract static class Builder {
-
-        private Builder() {
-            super();
-        }
+    public interface Builder {
 
         /**
          * Adds a property to obfuscate.
@@ -171,7 +189,7 @@ public final class JSONObfuscator extends Obfuscator {
          * @throws NullPointerException If the given property name or obfuscator is {@code null}.
          * @throws IllegalArgumentException If a property with the same name and the same case sensitivity was already added.
          */
-        public abstract PropertyConfigurer withProperty(String property, Obfuscator obfuscator);
+        PropertyConfigurer withProperty(String property, Obfuscator obfuscator);
 
         /**
          * Adds a property to obfuscate.
@@ -183,7 +201,7 @@ public final class JSONObfuscator extends Obfuscator {
          * @throws NullPointerException If the given property name, obfuscator or case sensitivity is {@code null}.
          * @throws IllegalArgumentException If a property with the same name and the same case sensitivity was already added.
          */
-        public abstract PropertyConfigurer withProperty(String property, Obfuscator obfuscator, CaseSensitivity caseSensitivity);
+        PropertyConfigurer withProperty(String property, Obfuscator obfuscator, CaseSensitivity caseSensitivity);
 
         /**
          * Sets the default case sensitivity for new properties to {@link CaseSensitivity#CASE_SENSITIVE}. This is the default setting.
@@ -192,7 +210,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public abstract Builder caseSensitiveByDefault();
+        Builder caseSensitiveByDefault();
 
         /**
          * Sets the default case sensitivity for new properties to {@link CaseSensitivity#CASE_INSENSITIVE}.
@@ -201,7 +219,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public abstract Builder caseInsensitiveByDefault();
+        Builder caseInsensitiveByDefault();
 
         /**
          * Indicates that by default properties will not be obfuscated if they are JSON objects or arrays.
@@ -211,7 +229,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public Builder scalarsOnlyByDefault() {
+        default Builder scalarsOnlyByDefault() {
             return excludeObjectsByDefault()
                     .excludeArraysByDefault();
         }
@@ -224,7 +242,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public abstract Builder excludeObjectsByDefault();
+        Builder excludeObjectsByDefault();
 
         /**
          * Indicates that by default properties will not be obfuscated if they are JSON arrays.
@@ -234,7 +252,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public abstract Builder excludeArraysByDefault();
+        Builder excludeArraysByDefault();
 
         /**
          * Indicates that by default properties will be obfuscated if they are JSON objects or arrays (default).
@@ -244,7 +262,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public Builder allByDefault() {
+        default Builder allByDefault() {
             return includeObjectsByDefault()
                     .includeArraysByDefault();
         }
@@ -257,7 +275,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public abstract Builder includeObjectsByDefault();
+        Builder includeObjectsByDefault();
 
         /**
          * Indicates that by default properties will be obfuscated if they are JSON arrays (default).
@@ -267,7 +285,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return This object.
          */
-        public abstract Builder includeArraysByDefault();
+        Builder includeArraysByDefault();
 
         /**
          * Sets the warning to include if a {@link JsonParseException} is thrown.
@@ -276,7 +294,18 @@ public final class JSONObfuscator extends Obfuscator {
          * @param warning The warning to include.
          * @return This object.
          */
-        public abstract Builder withMalformedJSONWarning(String warning);
+        Builder withMalformedJSONWarning(String warning);
+
+        /**
+         * Sets the limit for the obfuscated result.
+         *
+         * @param limit The limit to use.
+         * @return An object that can be used to configure the handling when the obfuscated result exceeds a pre-defined limit,
+         *         or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @throws IllegalArgumentException If the given limit is negative.
+         * @since 1.1
+         */
+        LimitConfigurer limitTo(long limit);
 
         /**
          * This method allows the application of a function to this builder.
@@ -287,7 +316,7 @@ public final class JSONObfuscator extends Obfuscator {
          * @param f The function to apply.
          * @return The result of applying the function to this builder.
          */
-        public <R> R transform(Function<? super Builder, ? extends R> f) {
+        default <R> R transform(Function<? super Builder, ? extends R> f) {
             return f.apply(this);
         }
 
@@ -296,7 +325,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return The created {@code JSONObfuscator}.
          */
-        public abstract JSONObfuscator build();
+        JSONObfuscator build();
     }
 
     /**
@@ -304,11 +333,7 @@ public final class JSONObfuscator extends Obfuscator {
      *
      * @author Rob Spoor
      */
-    public abstract static class PropertyConfigurer extends Builder {
-
-        private PropertyConfigurer() {
-            super();
-        }
+    public interface PropertyConfigurer extends Builder {
 
         /**
          * Indicates that properties with the current name will not be obfuscated if they are JSON objects or arrays.
@@ -316,7 +341,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
          */
-        public PropertyConfigurer scalarsOnly() {
+        default PropertyConfigurer scalarsOnly() {
             return excludeObjects()
                     .excludeArrays();
         }
@@ -326,14 +351,14 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
          */
-        public abstract PropertyConfigurer excludeObjects();
+        PropertyConfigurer excludeObjects();
 
         /**
          * Indicates that properties with the current name will not be obfuscated if they are JSON arrays.
          *
          * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
          */
-        public abstract PropertyConfigurer excludeArrays();
+        PropertyConfigurer excludeArrays();
 
         /**
          * Indicates that properties with the current name will be obfuscated if they are JSON objects or arrays.
@@ -341,7 +366,7 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
          */
-        public PropertyConfigurer all() {
+        default PropertyConfigurer all() {
             return includeObjects()
                     .includeArrays();
         }
@@ -351,21 +376,44 @@ public final class JSONObfuscator extends Obfuscator {
          *
          * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
          */
-        public abstract PropertyConfigurer includeObjects();
+        PropertyConfigurer includeObjects();
 
         /**
          * Indicates that properties with the current name will be obfuscated if they are JSON arrays.
          *
          * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
          */
-        public abstract PropertyConfigurer includeArrays();
+        PropertyConfigurer includeArrays();
     }
 
-    private static final class ObfuscatorBuilder extends PropertyConfigurer {
+    /**
+     * An object that can be used to configure handling when the obfuscated result exceeds a pre-defined limit.
+     *
+     * @author Rob Spoor
+     * @since 1.1
+     */
+    public interface LimitConfigurer extends Builder {
+
+        /**
+         * Sets the indicator to use when the obfuscated result is truncated due to the limit being exceeded.
+         * There can be one place holder for the total number of characters. Defaults to {@code ... (total: %d)}.
+         * Use {@code null} to omit the indicator.
+         *
+         * @param pattern The pattern to use as indicator.
+         * @return An object that can be used to configure the handling when the obfuscated result exceeds a pre-defined limit,
+         *         or continue building {@link JSONObfuscator JSONObfuscators}.
+         */
+        LimitConfigurer withTruncatedIndicator(String pattern);
+    }
+
+    private static final class ObfuscatorBuilder implements PropertyConfigurer, LimitConfigurer {
 
         private final MapBuilder<PropertyConfig> properties;
 
         private String malformedJSONWarning;
+
+        private long limit;
+        private String truncatedIndicator;
 
         // default settings
         private boolean obfuscateObjectsByDefault;
@@ -380,7 +428,11 @@ public final class JSONObfuscator extends Obfuscator {
 
         private ObfuscatorBuilder() {
             properties = new MapBuilder<>();
+
             malformedJSONWarning = Messages.JSONObfuscator.malformedJSON.text.get();
+
+            limit = Long.MAX_VALUE;
+            truncatedIndicator = "... (total: %d)"; //$NON-NLS-1$
 
             obfuscateObjectsByDefault = true;
             obfuscateArraysByDefault = true;
@@ -479,6 +531,21 @@ public final class JSONObfuscator extends Obfuscator {
         @Override
         public Builder withMalformedJSONWarning(String warning) {
             malformedJSONWarning = warning;
+            return this;
+        }
+
+        @Override
+        public LimitConfigurer limitTo(long limit) {
+            if (limit < 0) {
+                throw new IllegalArgumentException(limit + " < 0"); //$NON-NLS-1$
+            }
+            this.limit = limit;
+            return this;
+        }
+
+        @Override
+        public LimitConfigurer withTruncatedIndicator(String pattern) {
+            this.truncatedIndicator = pattern;
             return this;
         }
 

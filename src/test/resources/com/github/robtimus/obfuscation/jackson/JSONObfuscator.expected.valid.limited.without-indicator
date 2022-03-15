@@ -1,0 +1,25 @@
+{
+  "string": "***",
+  "int": ***,
+  "float": ***,
+  "booleanTrue": ***,
+  "booleanFalse": ***,
+  "null": ***,
+  "object": ***,
+  "array": ***,
+  "notMatchedString": "123456",
+  "notMatchedInt": 123456,
+  "notMatchedFloat": 1234.56,
+  "notMatchedBooleanTrue": true,
+  "notMatchedBooleanFalse": false,
+  "nonMatchedNull": null,
+  "nonMatchedObject": {
+    "notMatchedString": "123456",
+    "notMatchedInt": 123456,
+    "notMatchedFloat": 1234.56,
+    "notMatchedBooleanTrue": true,
+    "notMatchedBooleanFalse": false,
+    "nonMatchedNull": null
+  },
+  "nested": [ {
+    "string": "**
