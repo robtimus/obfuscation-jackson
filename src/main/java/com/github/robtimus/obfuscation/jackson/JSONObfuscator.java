@@ -25,14 +25,19 @@ import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.support.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.support.CaseSensitivity;
@@ -49,6 +54,40 @@ public final class JSONObfuscator extends Obfuscator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JSONObfuscator.class);
 
+    // Allow most non-deprecated features, to be as lenient as possible
+    static final Set<JsonParser.Feature> ENABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(EnumSet.of(
+            JsonParser.Feature.ALLOW_COMMENTS,
+            JsonParser.Feature.ALLOW_YAML_COMMENTS,
+            JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES,
+            JsonParser.Feature.ALLOW_SINGLE_QUOTES,
+            JsonParser.Feature.IGNORE_UNDEFINED
+    ));
+
+    // Disable explicitly
+    static final Set<JsonParser.Feature> DISABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(EnumSet.of(
+            // the source is not ours to close
+            JsonParser.Feature.AUTO_CLOSE_SOURCE,
+            // don't fail if there are duplicates, to be as lenient as possible
+            JsonParser.Feature.STRICT_DUPLICATE_DETECTION,
+            // the source is not unnecessary
+            JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION
+    ));
+
+    // Allow all features, to be as lenient as possible
+    static final Set<JsonReadFeature> ENABLED_JSON_READ_FEATURES = Collections.unmodifiableSet(EnumSet.of(
+            JsonReadFeature.ALLOW_JAVA_COMMENTS,
+            JsonReadFeature.ALLOW_YAML_COMMENTS,
+            JsonReadFeature.ALLOW_SINGLE_QUOTES,
+            JsonReadFeature.ALLOW_UNQUOTED_FIELD_NAMES,
+            JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS,
+            JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER,
+            JsonReadFeature.ALLOW_LEADING_ZEROS_FOR_NUMBERS,
+            JsonReadFeature.ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,
+            JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS,
+            JsonReadFeature.ALLOW_MISSING_VALUES,
+            JsonReadFeature.ALLOW_TRAILING_COMMA
+    ));
+
     private final Map<String, PropertyConfig> properties;
 
     private final JsonFactory jsonFactory;
@@ -61,17 +100,28 @@ public final class JSONObfuscator extends Obfuscator {
     private JSONObfuscator(ObfuscatorBuilder builder) {
         properties = builder.properties();
 
-        jsonFactory = new JsonFactory();
-        for (JsonParser.Feature feature : JsonParser.Feature.values()) {
-            jsonFactory.enable(feature);
-        }
-        jsonFactory.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
-        jsonFactory.disable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
+        jsonFactory = createJsonFactory();
 
         malformedJSONWarning = builder.malformedJSONWarning;
 
         limit = builder.limit;
         truncatedIndicator = builder.truncatedIndicator;
+    }
+
+    private static JsonFactory createJsonFactory() {
+        JsonFactoryBuilder builder = new JsonFactoryBuilder();
+        for (JsonReadFeature feature : ENABLED_JSON_READ_FEATURES) {
+            builder = builder.enable(feature);
+        }
+
+        JsonFactory factory = builder.build();
+        for (JsonParser.Feature feature : ENABLED_JSON_PARSER_FEATURES) {
+            factory.enable(feature);
+        }
+        for (JsonParser.Feature feature : DISABLED_JSON_PARSER_FEATURES) {
+            factory.disable(feature);
+        }
+        return factory;
     }
 
     @Override

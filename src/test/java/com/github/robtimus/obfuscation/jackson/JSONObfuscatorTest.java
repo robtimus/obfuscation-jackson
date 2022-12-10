@@ -19,6 +19,9 @@ package com.github.robtimus.obfuscation.jackson;
 
 import static com.github.robtimus.obfuscation.Obfuscator.fixedLength;
 import static com.github.robtimus.obfuscation.Obfuscator.none;
+import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.DISABLED_JSON_PARSER_FEATURES;
+import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.ENABLED_JSON_PARSER_FEATURES;
+import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.ENABLED_JSON_READ_FEATURES;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.builder;
 import static com.github.robtimus.obfuscation.support.CaseSensitivity.CASE_SENSITIVE;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -26,6 +29,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +47,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.io.Writer;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Supplier;
@@ -60,8 +65,11 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.github.robtimus.junit.support.extension.testlogger.Reload4jLoggerContext;
 import com.github.robtimus.junit.support.extension.testlogger.TestLogger;
 import com.github.robtimus.obfuscation.Obfuscator;
@@ -70,6 +78,31 @@ import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
 class JSONObfuscatorTest {
+
+    @Nested
+    @DisplayName("features")
+    class Features {
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(JsonParser.Feature.class)
+        @DisplayName("JsonParser.Feature completeness")
+        void testJsonParserFeatureCompleteness(JsonParser.Feature feature) {
+            int enabled = ENABLED_JSON_PARSER_FEATURES.contains(feature) ? 1 : 0;
+            int disabled = DISABLED_JSON_PARSER_FEATURES.contains(feature) ? 1 : 0;
+            int deprecated = assertDoesNotThrow(() -> {
+                Field field = JsonParser.Feature.class.getDeclaredField(feature.name());
+                return field.isAnnotationPresent(Deprecated.class) ? 1 : 0;
+            });
+            assertEquals(1, enabled + disabled + deprecated, "Each JsonParser.Feature should either be enabled, disabled, or deprecated");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(JsonReadFeature.class)
+        @DisplayName("JsonReadFeature completeness")
+        void testJsonReadFeatureCompleteness(JsonReadFeature feature) {
+            assertTrue(ENABLED_JSON_READ_FEATURES.contains(feature), "Each JsonReadFeature should eitherbe enabled, disabled, or deprecated");
+        }
+    }
 
     @ParameterizedTest(name = "{1}")
     @MethodSource
