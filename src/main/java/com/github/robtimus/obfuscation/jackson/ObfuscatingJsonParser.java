@@ -19,6 +19,7 @@ package com.github.robtimus.obfuscation.jackson;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.function.Predicate;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.util.JsonParserDelegate;
@@ -98,79 +99,60 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     private void startObject() throws IOException {
-        if (currentProperty != null) {
-            if (depth == 0) {
-                if (currentProperty.obfuscateObjects) {
-                    updateOtherTokenFields(JsonToken.START_OBJECT);
-                    appendUntilToken();
-
-                    currentStructure = JsonToken.START_OBJECT;
-                    depth++;
-                } else {
-                    // There is an obfuscator for the object property, but the obfuscation mode prohibits obfuscating objects; reset the obfuscation
-                    currentProperty = null;
-                }
-            } else if (currentStructure == JsonToken.START_OBJECT) {
-                // In a nested object that's being obfuscated; do nothing
-                depth++;
-            }
-            // else in a nested array that's being obfuscated; do nothing
-        }
-        // else not obfuscating
+        startStructure(JsonToken.START_OBJECT, p -> p.obfuscateObjects);
     }
 
     private void endObject() throws IOException {
-        if (currentStructure == JsonToken.START_OBJECT) {
-            depth--;
-            if (depth == 0) {
-                int originalTokenStart = tokenStart;
-                updateOtherTokenFields(JsonToken.END_OBJECT);
-                obfuscateUntilToken(originalTokenStart);
-
-                currentProperty = null;
-                currentStructure = null;
-            }
-            // else still in a nested object that's being obfuscated
-        }
-        // else currently no object is being obfuscated
+        endStructure(JsonToken.START_OBJECT, JsonToken.END_OBJECT);
     }
 
     private void startArray() throws IOException {
+        startStructure(JsonToken.START_ARRAY, p -> p.obfuscateArrays);
+    }
+
+    private void endArray() throws IOException {
+        endStructure(JsonToken.START_ARRAY, JsonToken.END_ARRAY);
+    }
+
+    private void startStructure(JsonToken startToken, Predicate<PropertyConfig> doValidate) throws IOException {
         if (currentProperty != null) {
             if (depth == 0) {
-                if (currentProperty.obfuscateArrays) {
-                    updateOtherTokenFields(JsonToken.START_ARRAY);
+                if (doValidate.test(currentProperty)) {
+                    updateOtherTokenFields(startToken);
                     appendUntilToken();
 
-                    currentStructure = JsonToken.START_ARRAY;
+                    currentStructure = startToken;
                     depth++;
                 } else {
-                    // There is an obfuscator for the array property, but the obfuscation mode prohibits obfuscating arrays; reset the obfuscation
+                    // There is an obfuscator for the structure property, but the obfuscation mode prohibits obfuscating it; reset the obfuscation
                     currentProperty = null;
                 }
-            } else if (currentStructure == JsonToken.START_ARRAY) {
-                // In a nested array that's being obfuscated; do nothing
+            } else if (currentStructure == startToken) {
+                // In a nested structure that's being obfuscated; do nothing
                 depth++;
             }
-            // else in a nested array that's being obfuscated; do nothing
+            // else in a nested structure that's being obfuscated; do nothing
         }
         // else not obfuscating
     }
 
-    private void endArray() throws IOException {
-        if (currentStructure == JsonToken.START_ARRAY) {
+    private void endStructure(JsonToken startToken, JsonToken endToken) throws IOException {
+        if (currentStructure == startToken) {
             depth--;
             if (depth == 0) {
-                int originalTokenStart = tokenStart;
-                updateOtherTokenFields(JsonToken.END_ARRAY);
-                obfuscateUntilToken(originalTokenStart);
+                if (currentProperty.performObfuscation) {
+                    int originalTokenStart = tokenStart;
+                    updateOtherTokenFields(endToken);
+                    obfuscateUntilToken(originalTokenStart);
+                }
+                // else the obfuscator is Obfuscator.none(), which means we don't need to obfuscate
 
                 currentProperty = null;
                 currentStructure = null;
             }
-            // else still in a nested array that's being obfuscated
+            // else still in a nested structure array that's being obfuscated
         }
-        // else currently no array is being obfuscated
+        // else currently no structure is being obfuscated
     }
 
     private void fieldName() throws IOException {
@@ -182,6 +164,11 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
                 appendUntilToken();
                 source.truncate();
             }
+        } else if (!currentProperty.performObfuscation && source.needsTruncating()) {
+            // in a nested object or array that's being obfuscated using Obfuscator.none(), which means we can just append data already
+            updateOtherTokenFields(JsonToken.FIELD_NAME);
+            appendUntilToken();
+            source.truncate();
         }
         // else in a nested object or array that's being obfuscated; do nothing
     }
@@ -190,6 +177,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
         if (currentProperty != null && depth == 0) {
             updateStringTokenFields();
             appendUntilToken();
+            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
             obfuscateCurrentToken();
 
             currentProperty = null;
@@ -201,6 +189,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
         if (currentProperty != null && depth == 0) {
             updateNumberTokenFields();
             appendUntilToken();
+            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
             obfuscateCurrentToken();
 
             currentProperty = null;
@@ -212,6 +201,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
         if (currentProperty != null && depth == 0) {
             updateOtherTokenFields(token);
             appendUntilToken();
+            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
             obfuscateCurrentToken();
 
             currentProperty = null;
@@ -223,6 +213,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
         if (currentProperty != null && depth == 0) {
             updateOtherTokenFields(JsonToken.VALUE_NULL);
             appendUntilToken();
+            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
             obfuscateCurrentToken();
 
             currentProperty = null;

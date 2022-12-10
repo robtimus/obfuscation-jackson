@@ -25,11 +25,13 @@ final class PropertyConfig {
     final Obfuscator obfuscator;
     final boolean obfuscateObjects;
     final boolean obfuscateArrays;
+    final boolean performObfuscation;
 
     PropertyConfig(Obfuscator obfuscator, boolean obfuscateObjects, boolean obfuscateArrays) {
         this.obfuscator = Objects.requireNonNull(obfuscator);
         this.obfuscateObjects = obfuscateObjects;
         this.obfuscateArrays = obfuscateArrays;
+        this.performObfuscation = !obfuscator.equals(Obfuscator.none());
     }
 
     @Override

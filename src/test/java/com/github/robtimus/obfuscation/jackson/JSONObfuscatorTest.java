@@ -536,7 +536,7 @@ class JSONObfuscatorTest {
             assertThat(traceMessages, hasSize(greaterThanOrEqualTo(1)));
 
             Pattern pattern = Pattern.compile(".*: (\\d+)");
-            int expectedMax = (int) (Source.OfReader.PREFERRED_MAX_BUFFER_SIZE * 1.25D);
+            int expectedMax = (int) (Source.OfReader.PREFERRED_MAX_BUFFER_SIZE * 1.05D);
             List<Integer> sizes = traceMessages.stream()
                     .map(message -> extractSize(message, pattern))
                     .collect(Collectors.toList());
