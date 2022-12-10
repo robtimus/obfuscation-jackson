@@ -22,7 +22,7 @@
   <parent>
     <groupId>com.github.robtimus</groupId>
     <artifactId>robtimus-parent</artifactId>
-    <version>1.4.3</version>
+    <version>1.6</version>
     <relativePath />
   </parent>
 
@@ -64,9 +64,10 @@
   <properties>
     <version.jackson>2.13.2</version.jackson>
     <version.jackson.javadoc>2.13</version.jackson.javadoc>
+    <version.junit-support>2.1</version.junit-support>
     <version.obfuscation-core>1.4</version.obfuscation-core>
-    <!-- Use version 1.7.32 to match the latest release; this will allow Snyk to warn for vulnerabilities -->
-    <version.slf4j>1.7.32</version.slf4j>
+    <version.pioneer>1.9.1</version.pioneer>
+    <version.slf4j>1.7.36</version.slf4j>
   </properties>
 
   <dependencies>
@@ -85,11 +86,13 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+      <version>${version.slf4j}</version>
     </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-nop</artifactId>
+      <artifactId>slf4j-reload4j</artifactId>
+      <version>${version.slf4j}</version>
       <scope>test</scope>
     </dependency>
 
@@ -108,7 +111,20 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
-      <version>${version.mockito}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.robtimus</groupId>
+      <artifactId>junit-support</artifactId>
+      <version>${version.junit-support}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit-pioneer</groupId>
+      <artifactId>junit-pioneer</artifactId>
+      <version>${version.pioneer}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

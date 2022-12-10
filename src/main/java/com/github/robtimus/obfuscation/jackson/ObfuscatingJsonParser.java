@@ -25,7 +25,7 @@ import com.fasterxml.jackson.core.util.JsonParserDelegate;
 
 final class ObfuscatingJsonParser extends JsonParserDelegate {
 
-    private final CharSequence text;
+    private final Source source;
     private final Appendable destination;
 
     private final Map<String, PropertyConfig> properties;
@@ -42,12 +42,10 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     private JsonToken currentStructure;
     private int depth = 0;
 
-    ObfuscatingJsonParser(JsonParser parser, CharSequence source, int start, int end, Appendable destination,
-            Map<String, PropertyConfig> properties) {
-
+    ObfuscatingJsonParser(JsonParser parser, Source source, int start, int end, Appendable destination, Map<String, PropertyConfig> properties) {
         super(parser);
 
-        this.text = source;
+        this.source = source;
         this.textOffset = start;
         this.textEnd = end;
         this.textIndex = start;
@@ -178,6 +176,12 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     private void fieldName() throws IOException {
         if (currentProperty == null) {
             currentProperty = properties.get(getCurrentName());
+
+            if (source.needsTruncating()) {
+                updateOtherTokenFields(JsonToken.FIELD_NAME);
+                appendUntilToken();
+                source.truncate();
+            }
         }
         // else in a nested object or array that's being obfuscated; do nothing
     }
@@ -255,7 +259,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     private int stringValueStart() {
         int start = tokenStart();
         // start points to the opening ", skip past it
-        if (text.charAt(start) == '"') {
+        if (source.charAt(start) == '"') {
             start++;
         }
         return start;
@@ -264,19 +268,19 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     private int stringValueEnd() {
         int end = tokenEnd();
         // end points to the closing ", skip back past it
-        if (text.charAt(end - 1) == '"') {
+        if (source.charAt(end - 1) == '"') {
             end--;
         }
         return end;
     }
 
     private void appendUntilToken() throws IOException {
-        destination.append(text, textIndex, tokenStart);
+        source.appendTo(textIndex, tokenStart, destination);
         textIndex = tokenStart;
     }
 
     private void obfuscateUntilToken(int originalTokenStart) throws IOException {
-        currentProperty.obfuscator.obfuscateText(text, originalTokenStart, tokenEnd, destination);
+        source.obfuscateText(originalTokenStart, tokenEnd, currentProperty.obfuscator, destination);
         textIndex = tokenEnd;
     }
 
@@ -286,8 +290,6 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     void appendRemainder() throws IOException {
-        int end = textEnd == -1 ? text.length() : textEnd;
-        destination.append(text, textIndex, end);
-        textIndex = end;
+        textIndex = source.appendRemainder(textIndex, textEnd, destination);
     }
 }
