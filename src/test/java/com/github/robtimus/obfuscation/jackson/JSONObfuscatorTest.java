@@ -351,17 +351,6 @@ class JSONObfuscatorTest {
         }
 
         @Test
-        @DisplayName("obfuscateText(CharSequence, int, int) with large values")
-        void testObfuscateTextCharSequenceWithLargeValuesLoggingDisabled() {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
-
-            assertEquals(expectedWithLargeValues,
-                    obfuscator.obfuscateText("x" + inputWithLargeValues + "x", 1, 1 + inputWithLargeValues.length()).toString());
-
-            assertNoTruncationLogging(appender);
-        }
-
-        @Test
         @DisplayName("obfuscateText(CharSequence, int, int, Appendable)")
         void testObfuscateTextCharSequenceToAppendable() throws IOException {
             Obfuscator obfuscator = obfuscatorSupplier.get();
@@ -380,7 +369,6 @@ class JSONObfuscatorTest {
             Obfuscator obfuscator = obfuscatorSupplier.get();
 
             StringWriter destination = spy(new StringWriter());
-            destination.getBuffer().delete(0, destination.getBuffer().length());
             obfuscator.obfuscateText("x" + inputWithLargeValues + "x", 1, 1 + inputWithLargeValues.length(), destination);
             assertEquals(expectedWithLargeValues, destination.toString());
             verify(destination, never()).close();
