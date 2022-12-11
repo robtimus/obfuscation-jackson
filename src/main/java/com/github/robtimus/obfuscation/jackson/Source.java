@@ -117,12 +117,18 @@ interface Source {
         public void appendTo(int from, int to, Appendable destination) throws IOException {
             destination.append(buffer, from - offset, to - offset);
             firstUnread = Math.max(firstUnread, to);
+
+            // Truncate if necessary, now that firstUnread has been updated
+            truncateIfNeeded(0);
         }
 
         @Override
         public void obfuscateText(int from, int to, Obfuscator obfuscator, Appendable destination) throws IOException {
             obfuscator.obfuscateText(buffer, from - offset, to - offset, destination);
             firstUnread = Math.max(firstUnread, to);
+
+            // Truncate if necessary, now that firstUnread has been updated
+            truncateIfNeeded(0);
         }
 
         @Override
