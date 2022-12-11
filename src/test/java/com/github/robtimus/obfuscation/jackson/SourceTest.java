@@ -17,6 +17,7 @@
 
 package com.github.robtimus.obfuscation.jackson;
 
+import static com.github.robtimus.obfuscation.jackson.Source.OfReader.DEFAULT_PREFERRED_MAX_BUFFER_SIZE;
 import static com.github.robtimus.obfuscation.jackson.Source.OfReader.LOGGER_NAME;
 import static com.github.robtimus.obfuscation.jackson.Source.OfReader.PREFERRED_MAX_BUFFER_SIZE;
 import static com.github.robtimus.obfuscation.jackson.Source.OfReader.PREFERRED_MAX_BUFFER_SIZE_PROPERTY;
@@ -294,7 +295,7 @@ final class SourceTest {
             @DisplayName("system property not set")
             @ClearSystemProperty(key = PREFERRED_MAX_BUFFER_SIZE_PROPERTY)
             void testSystemPropertyNotSet() {
-                assertEquals(1024 * 1024, getPreferredMaxBufferSize());
+                assertEquals(DEFAULT_PREFERRED_MAX_BUFFER_SIZE, getPreferredMaxBufferSize());
 
                 verify(appender, never()).doAppend(any());
             }
@@ -312,7 +313,7 @@ final class SourceTest {
             @DisplayName("system property set to 0")
             @SetSystemProperty(key = PREFERRED_MAX_BUFFER_SIZE_PROPERTY, value = "0")
             void testSystemPropertySetToZero() {
-                assertEquals(1024 * 1024, getPreferredMaxBufferSize());
+                assertEquals(DEFAULT_PREFERRED_MAX_BUFFER_SIZE, getPreferredMaxBufferSize());
 
                 ArgumentCaptor<LoggingEvent> eventCaptor = ArgumentCaptor.forClass(LoggingEvent.class);
 
@@ -320,14 +321,14 @@ final class SourceTest {
 
                 LoggingEvent event = eventCaptor.getValue();
                 assertEquals(Level.WARN, event.getLevel());
-                assertEquals(Messages.Source.preferredMaxBufferSize.notPositive(0, 1024 * 1024), event.getRenderedMessage());
+                assertEquals(Messages.Source.preferredMaxBufferSize.notPositive(0, DEFAULT_PREFERRED_MAX_BUFFER_SIZE), event.getRenderedMessage());
             }
 
             @Test
             @DisplayName("system property set to negative")
             @SetSystemProperty(key = PREFERRED_MAX_BUFFER_SIZE_PROPERTY, value = "-1")
             void testSystemPropertySetToNegative() {
-                assertEquals(1024 * 1024, getPreferredMaxBufferSize());
+                assertEquals(DEFAULT_PREFERRED_MAX_BUFFER_SIZE, getPreferredMaxBufferSize());
 
                 ArgumentCaptor<LoggingEvent> eventCaptor = ArgumentCaptor.forClass(LoggingEvent.class);
 
@@ -335,14 +336,14 @@ final class SourceTest {
 
                 LoggingEvent event = eventCaptor.getValue();
                 assertEquals(Level.WARN, event.getLevel());
-                assertEquals(Messages.Source.preferredMaxBufferSize.notPositive(-1, 1024 * 1024), event.getRenderedMessage());
+                assertEquals(Messages.Source.preferredMaxBufferSize.notPositive(-1, DEFAULT_PREFERRED_MAX_BUFFER_SIZE), event.getRenderedMessage());
             }
 
             @Test
             @DisplayName("system property set to non-numeric")
-            @SetSystemProperty(key = PREFERRED_MAX_BUFFER_SIZE_PROPERTY, value = "a123")
+            @SetSystemProperty(key = PREFERRED_MAX_BUFFER_SIZE_PROPERTY, value = "a12")
             void testSystemPropertySetToNonNumeric() {
-                assertEquals(1024 * 1024, getPreferredMaxBufferSize());
+                assertEquals(DEFAULT_PREFERRED_MAX_BUFFER_SIZE, getPreferredMaxBufferSize());
 
                 ArgumentCaptor<LoggingEvent> eventCaptor = ArgumentCaptor.forClass(LoggingEvent.class);
 
@@ -350,7 +351,7 @@ final class SourceTest {
 
                 LoggingEvent event = eventCaptor.getValue();
                 assertEquals(Level.WARN, event.getLevel());
-                assertEquals(Messages.Source.preferredMaxBufferSize.notNumeric("a123", 1024 * 1024), event.getRenderedMessage());
+                assertEquals(Messages.Source.preferredMaxBufferSize.notNumeric("a12", DEFAULT_PREFERRED_MAX_BUFFER_SIZE), event.getRenderedMessage());
             }
         }
     }

@@ -84,6 +84,8 @@ interface Source {
 
         static final String PREFERRED_MAX_BUFFER_SIZE_PROPERTY = "com.github.robtimus.obfuscation.jackson.preferredMaxBufferSize"; //$NON-NLS-1$
 
+        static final int DEFAULT_PREFERRED_MAX_BUFFER_SIZE = 512 * 1024; // 512KB / 0.5MB
+
         static final int PREFERRED_MAX_BUFFER_SIZE = getPreferredMaxBufferSize();
 
         private final CountingReader reader;
@@ -189,7 +191,7 @@ interface Source {
         }
 
         static int getPreferredMaxBufferSize() {
-            final int defaultPreferredMaxBufferSize = 1024 * 1024;
+            final int defaultPreferredMaxBufferSize = DEFAULT_PREFERRED_MAX_BUFFER_SIZE;
             String preferredMaxBufferSizeString = System.getProperty(PREFERRED_MAX_BUFFER_SIZE_PROPERTY);
             if (preferredMaxBufferSizeString != null) {
                 try {
