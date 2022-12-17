@@ -274,6 +274,12 @@ final class SourceTest {
             assertEquals(getClass().getPackage().getName(), LOGGER_NAME);
         }
 
+        @Test
+        @DisplayName("PREFERRED_MAX_BUFFER_SIZE_PROPERTY")
+        void testPreferredMaxBufferSizeProperty() {
+            assertEquals(getClass().getPackage().getName() + ".preferredMaxBufferSize", PREFERRED_MAX_BUFFER_SIZE_PROPERTY);
+        }
+
         @Nested
         @DisplayName("getPreferredMaxBufferSize")
         class GetPreferredMaxBufferSize {
