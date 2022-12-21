@@ -62,8 +62,8 @@
   </issueManagement>
 
   <properties>
-    <version.jackson>2.13.2</version.jackson>
-    <version.jackson.javadoc>2.13</version.jackson.javadoc>
+    <version.jackson>2.14.1</version.jackson>
+    <version.jackson.javadoc>2.14</version.jackson.javadoc>
     <version.junit-support>2.1</version.junit-support>
     <version.obfuscation-core>1.4</version.obfuscation-core>
     <version.pioneer>1.9.1</version.pioneer>
