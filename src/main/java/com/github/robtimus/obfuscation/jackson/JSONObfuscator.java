@@ -25,8 +25,9 @@ import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -54,39 +55,49 @@ public final class JSONObfuscator extends Obfuscator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JSONObfuscator.class);
 
+    // Note: the following are declared as Set<String> for backwards compatibility with older Jackson versions
+    // They are verified through unit tests for correctness and completeness
+
     // Allow most non-deprecated features, to be as lenient as possible
-    static final Set<JsonParser.Feature> ENABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(EnumSet.of(
-            JsonParser.Feature.ALLOW_COMMENTS,
-            JsonParser.Feature.ALLOW_YAML_COMMENTS,
-            JsonParser.Feature.ALLOW_UNQUOTED_FIELD_NAMES,
-            JsonParser.Feature.ALLOW_SINGLE_QUOTES,
-            JsonParser.Feature.IGNORE_UNDEFINED
-    ));
+    @SuppressWarnings("nls")
+    static final Set<String> ENABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            "ALLOW_COMMENTS",
+            "ALLOW_YAML_COMMENTS",
+            "ALLOW_UNQUOTED_FIELD_NAMES",
+            "ALLOW_SINGLE_QUOTES",
+            "IGNORE_UNDEFINED"
+    )));
 
     // Disable explicitly
-    static final Set<JsonParser.Feature> DISABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(EnumSet.of(
+    @SuppressWarnings("nls")
+    static final Set<String> DISABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             // the source is not ours to close
-            JsonParser.Feature.AUTO_CLOSE_SOURCE,
+            "AUTO_CLOSE_SOURCE",
             // don't fail if there are duplicates, to be as lenient as possible
-            JsonParser.Feature.STRICT_DUPLICATE_DETECTION,
+            "STRICT_DUPLICATE_DETECTION",
             // the source is not unnecessary
-            JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION
-    ));
+            "INCLUDE_SOURCE_IN_LOCATION",
+            // use Double.parseDouble
+            "USE_FAST_DOUBLE_PARSER"
+    )));
 
     // Allow all features, to be as lenient as possible
-    static final Set<JsonReadFeature> ENABLED_JSON_READ_FEATURES = Collections.unmodifiableSet(EnumSet.of(
-            JsonReadFeature.ALLOW_JAVA_COMMENTS,
-            JsonReadFeature.ALLOW_YAML_COMMENTS,
-            JsonReadFeature.ALLOW_SINGLE_QUOTES,
-            JsonReadFeature.ALLOW_UNQUOTED_FIELD_NAMES,
-            JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS,
-            JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER,
-            JsonReadFeature.ALLOW_LEADING_ZEROS_FOR_NUMBERS,
-            JsonReadFeature.ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,
-            JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS,
-            JsonReadFeature.ALLOW_MISSING_VALUES,
-            JsonReadFeature.ALLOW_TRAILING_COMMA
-    ));
+    @SuppressWarnings("nls")
+    static final Set<String> ENABLED_JSON_READ_FEATURES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            "ALLOW_JAVA_COMMENTS",
+            "ALLOW_YAML_COMMENTS",
+            "ALLOW_SINGLE_QUOTES",
+            "ALLOW_UNQUOTED_FIELD_NAMES",
+            "ALLOW_UNESCAPED_CONTROL_CHARS",
+            "ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER",
+            "ALLOW_LEADING_ZEROS_FOR_NUMBERS",
+            "ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS",
+            "ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS",
+            "ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS",
+            "ALLOW_NON_NUMERIC_NUMBERS",
+            "ALLOW_MISSING_VALUES",
+            "ALLOW_TRAILING_COMMA"
+    )));
 
     private final Map<String, PropertyConfig> properties;
 
@@ -110,16 +121,21 @@ public final class JSONObfuscator extends Obfuscator {
 
     private static JsonFactory createJsonFactory() {
         JsonFactoryBuilder builder = new JsonFactoryBuilder();
-        for (JsonReadFeature feature : ENABLED_JSON_READ_FEATURES) {
-            builder = builder.enable(feature);
+        for (JsonReadFeature feature : JsonReadFeature.values()) {
+            String featureName = feature.name();
+            if (ENABLED_JSON_READ_FEATURES.contains(featureName)) {
+                builder = builder.enable(feature);
+            }
         }
 
         JsonFactory factory = builder.build();
-        for (JsonParser.Feature feature : ENABLED_JSON_PARSER_FEATURES) {
-            factory.enable(feature);
-        }
-        for (JsonParser.Feature feature : DISABLED_JSON_PARSER_FEATURES) {
-            factory.disable(feature);
+        for (JsonParser.Feature feature : JsonParser.Feature.values()) {
+            String featureName = feature.name();
+            if (ENABLED_JSON_PARSER_FEATURES.contains(featureName)) {
+                factory.enable(feature);
+            } else if (DISABLED_JSON_PARSER_FEATURES.contains(featureName)) {
+                factory.disable(feature);
+            }
         }
         return factory;
     }

@@ -29,6 +29,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,11 +50,14 @@ import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
@@ -81,14 +85,15 @@ class JSONObfuscatorTest {
 
     @Nested
     @DisplayName("features")
+    @TestInstance(Lifecycle.PER_CLASS)
     class Features {
 
         @ParameterizedTest(name = "{0}")
         @EnumSource(JsonParser.Feature.class)
         @DisplayName("JsonParser.Feature completeness")
         void testJsonParserFeatureCompleteness(JsonParser.Feature feature) {
-            int enabled = ENABLED_JSON_PARSER_FEATURES.contains(feature) ? 1 : 0;
-            int disabled = DISABLED_JSON_PARSER_FEATURES.contains(feature) ? 1 : 0;
+            int enabled = ENABLED_JSON_PARSER_FEATURES.contains(feature.name()) ? 1 : 0;
+            int disabled = DISABLED_JSON_PARSER_FEATURES.contains(feature.name()) ? 1 : 0;
             int deprecated = assertDoesNotThrow(() -> {
                 Field field = JsonParser.Feature.class.getDeclaredField(feature.name());
                 return field.isAnnotationPresent(Deprecated.class) ? 1 : 0;
@@ -97,10 +102,64 @@ class JSONObfuscatorTest {
         }
 
         @ParameterizedTest(name = "{0}")
+        @MethodSource("enabledJsonParserFeatures")
+        void testEnabledJsonParserFeatureCorrectness(String featureName) {
+            assertDoesNotThrow(() -> JsonParser.Feature.valueOf(featureName));
+        }
+
+        Stream<Arguments> enabledJsonParserFeatures() {
+            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures");
+            assertAll(unsupportedFeatures.stream()
+                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> JsonParser.Feature.valueOf(feature))));
+            return ENABLED_JSON_PARSER_FEATURES.stream()
+                    .filter(feature -> !unsupportedFeatures.contains(feature))
+                    .map(Arguments::arguments);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("disabledJsonParserFeatures")
+        void testDisabledJsonParserFeatureCorrectness(String featureName) {
+            assertDoesNotThrow(() -> JsonParser.Feature.valueOf(featureName));
+        }
+
+        Stream<Arguments> disabledJsonParserFeatures() {
+            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures");
+            assertAll(unsupportedFeatures.stream()
+                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> JsonParser.Feature.valueOf(feature))));
+            return DISABLED_JSON_PARSER_FEATURES.stream()
+                    .filter(feature -> !unsupportedFeatures.contains(feature))
+                    .map(Arguments::arguments);
+        }
+
+        @ParameterizedTest(name = "{0}")
         @EnumSource(JsonReadFeature.class)
         @DisplayName("JsonReadFeature completeness")
         void testJsonReadFeatureCompleteness(JsonReadFeature feature) {
-            assertTrue(ENABLED_JSON_READ_FEATURES.contains(feature), "Each JsonReadFeature should eitherbe enabled, disabled, or deprecated");
+            assertTrue(ENABLED_JSON_READ_FEATURES.contains(feature.name()), "Each JsonReadFeature should eitherbe enabled, disabled, or deprecated");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("enabledJsonReadFeatures")
+        void testEnabledJsonReadFeatureCorrectness(String featureName) {
+            assertDoesNotThrow(() -> JsonReadFeature.valueOf(featureName));
+        }
+
+        Stream<Arguments> enabledJsonReadFeatures() {
+            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures");
+            assertAll(unsupportedFeatures.stream()
+                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> JsonReadFeature.valueOf(feature))));
+            return ENABLED_JSON_READ_FEATURES.stream()
+                    .filter(feature -> !unsupportedFeatures.contains(feature))
+                    .map(Arguments::arguments);
+        }
+
+        private Set<String> readUnsupportedFeatures(String systemProperty) {
+            String featuresString = System.getProperty(systemProperty);
+            if (featuresString == null) {
+                return Collections.emptySet();
+            }
+            return Pattern.compile(",").splitAsStream(featuresString)
+                    .collect(Collectors.toSet());
         }
     }
 

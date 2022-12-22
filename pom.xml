@@ -62,8 +62,8 @@
   </issueManagement>
 
   <properties>
-    <version.jackson>2.13.4</version.jackson>
-    <version.jackson.javadoc>2.13</version.jackson.javadoc>
+    <version.jackson>2.14.1</version.jackson>
+    <version.jackson.javadoc>2.14</version.jackson.javadoc>
     <version.junit-support>2.1</version.junit-support>
     <version.obfuscation-core>1.4</version.obfuscation-core>
     <version.pioneer>1.9.1</version.pioneer>
@@ -288,8 +288,23 @@
     <profile>
       <id>min-versions</id>
       <properties>
-        <version.jackson>2.11.0</version.jackson>
+        <version.jackson>2.10.0</version.jackson>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <argLine>
+                <!-- The following were added in Jackson 2.11 and 2.14 -->
+                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures=USE_FAST_DOUBLE_PARSER
+                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures=ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS,ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS
+              </argLine>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
 
     <profile>
