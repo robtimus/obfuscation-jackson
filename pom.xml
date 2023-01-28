@@ -22,7 +22,7 @@
   <parent>
     <groupId>com.github.robtimus</groupId>
     <artifactId>robtimus-parent</artifactId>
-    <version>1.6</version>
+    <version>1.8</version>
     <relativePath />
   </parent>
 
@@ -130,20 +130,6 @@
   </dependencies>
 
   <build>
-    <resources>
-      <!-- add LICENSE.txt to META-INF besides the main resources -->
-      <resource>
-        <directory>src/main/resources</directory>
-      </resource>
-      <resource>
-        <directory>${project.basedir}</directory>
-        <targetPath>META-INF</targetPath>
-        <includes>
-          <include>LICENSE.txt</include>
-        </includes>
-      </resource>
-    </resources>
-
     <pluginManagement>
       <plugins>
         <plugin>
@@ -222,8 +208,8 @@
       </plugin>
 
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-antrun-plugin</artifactId>
+        <groupId>com.github.robtimus</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
       </plugin>
 
       <plugin>
@@ -297,6 +283,7 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
               <argLine>
+                @{argLine}
                 <!-- The following were added in Jackson 2.11 and 2.14 -->
                 -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures=USE_FAST_DOUBLE_PARSER
                 -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures=ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS,ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS
@@ -320,6 +307,7 @@
             <configuration>
               <!-- Allow JUnit to fully access the test classes -->
               <argLine>
+                @{argLine}
                 --add-opens com.github.robtimus.obfuscation.jackson/com.github.robtimus.obfuscation.jackson=ALL-UNNAMED
               </argLine>
             </configuration>
