@@ -19,18 +19,19 @@ package com.github.robtimus.obfuscation.jackson;
 
 import java.util.Objects;
 import com.github.robtimus.obfuscation.Obfuscator;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 
 final class PropertyConfig {
 
     final Obfuscator obfuscator;
-    final boolean obfuscateObjects;
-    final boolean obfuscateArrays;
+    final ObfuscationMode forObjects;
+    final ObfuscationMode forArrays;
     final boolean performObfuscation;
 
-    PropertyConfig(Obfuscator obfuscator, boolean obfuscateObjects, boolean obfuscateArrays) {
+    PropertyConfig(Obfuscator obfuscator, ObfuscationMode forObjects, ObfuscationMode forArrays) {
         this.obfuscator = Objects.requireNonNull(obfuscator);
-        this.obfuscateObjects = obfuscateObjects;
-        this.obfuscateArrays = obfuscateArrays;
+        this.forObjects = Objects.requireNonNull(forObjects);
+        this.forArrays = Objects.requireNonNull(forArrays);
         this.performObfuscation = !obfuscator.equals(Obfuscator.none());
     }
 
@@ -44,21 +45,21 @@ final class PropertyConfig {
         }
         PropertyConfig other = (PropertyConfig) o;
         return obfuscator.equals(other.obfuscator)
-                && obfuscateObjects == other.obfuscateObjects
-                && obfuscateArrays == other.obfuscateArrays;
+                && forObjects == other.forObjects
+                && forArrays == other.forArrays;
     }
 
     @Override
     public int hashCode() {
-        return obfuscator.hashCode() ^ Boolean.hashCode(obfuscateObjects) ^ Boolean.hashCode(obfuscateArrays);
+        return obfuscator.hashCode() ^ forObjects.hashCode() ^ forArrays.hashCode();
     }
 
     @Override
     @SuppressWarnings("nls")
     public String toString() {
         return "[obfuscator=" + obfuscator
-                + ",obfuscateObjects=" + obfuscateObjects
-                + ",obfuscateArrays=" + obfuscateArrays
+                + ",forObjects=" + forObjects
+                + ",forArrays=" + forArrays
                 + "]";
     }
 }

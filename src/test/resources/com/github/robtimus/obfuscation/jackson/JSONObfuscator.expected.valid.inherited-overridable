@@ -5,8 +5,19 @@
   "booleanTrue": ***,
   "booleanFalse": ***,
   "null": ***,
-  "object": ooo,
-  "array": aaa,
+  "object": {
+    "string": "***",
+    "int": ***,
+    "float": ***,
+    "booleanTrue": ***,
+    "booleanFalse": ***,
+    "null": ***,
+    "nested": [ {
+      "prop1": "ooo",
+      "prop2": "ooo"
+    } ]
+  },
+  "array": [ [ "aaa", "aaa" ], {} ],
   "notMatchedString": "123456",
   "notMatchedInt": 123456,
   "notMatchedFloat": 1234.56,
@@ -28,8 +39,18 @@
     "booleanTrue": ***,
     "booleanFalse": ***,
     "null": ***,
-    "object": ooo,
-    "array": aaa,
+    "object": {
+      "string": "***",
+      "int": ***,
+      "float": ***,
+      "booleanTrue": ***,
+      "booleanFalse": ***,
+      "nested": [ {
+        "prop1": "ooo",
+        "prop2": "ooo"
+      } ]
+    },
+    "array": [ [ "aaa", "aaa" ], {} ],
     "notMatchedString": "123456",
     "notMatchedInt": 123456,
     "notMatchedFloat": 1234.56,
@@ -38,24 +59,24 @@
     "nonMatchedNull": null
   } ],
   "notObfuscated": {
-    "string": "string\"int",
-    "int": 123456,
-    "float": 1234.56,
-    "booleanTrue": true,
-    "booleanFalse": false,
-    "null": null,
+    "string": "***",
+    "int": ***,
+    "float": ***,
+    "booleanTrue": ***,
+    "booleanFalse": ***,
+    "null": ***,
     "object": {
-      "string": "string\"int",
-      "int": 123456,
-      "float": 1234.56,
-      "booleanTrue": true,
-      "booleanFalse": false,
+      "string": "***",
+      "int": ***,
+      "float": ***,
+      "booleanTrue": ***,
+      "booleanFalse": ***,
       "nested": [ {
-        "prop1": "1",
-        "prop2": "2"
+        "prop1": "ooo",
+        "prop2": "ooo"
       } ]
     },
-    "array": [ [ "1", "2" ], {} ],
+    "array": [ [ "aaa", "aaa" ], {} ],
     "notMatchedString": "123456",
     "notMatchedInt": 123456,
     "notMatchedFloat": 1234.56,

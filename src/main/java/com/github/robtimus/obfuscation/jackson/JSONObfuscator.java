@@ -40,6 +40,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.github.robtimus.obfuscation.Obfuscator;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 import com.github.robtimus.obfuscation.support.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.support.CaseSensitivity;
 import com.github.robtimus.obfuscation.support.CountingReader;
@@ -301,23 +302,27 @@ public final class JSONObfuscator extends Obfuscator {
 
         /**
          * Indicates that by default properties will not be obfuscated if they are JSON objects.
-         * This can be overridden per property using {@link PropertyConfigurer#includeObjects()}
+         * This method is an alias for {@link #forObjectsByDefault(ObfuscationMode)} in combination with {@link ObfuscationMode#EXCLUDE}.
          * <p>
          * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
-        Builder excludeObjectsByDefault();
+        default Builder excludeObjectsByDefault() {
+            return forObjectsByDefault(ObfuscationMode.EXCLUDE);
+        }
 
         /**
          * Indicates that by default properties will not be obfuscated if they are JSON arrays.
-         * This can be overridden per property using {@link PropertyConfigurer#includeArrays()}
+         * This method is an alias for {@link #forArraysByDefault(ObfuscationMode)} in combination with {@link ObfuscationMode#EXCLUDE}.
          * <p>
          * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
-        Builder excludeArraysByDefault();
+        default Builder excludeArraysByDefault() {
+            return forArraysByDefault(ObfuscationMode.EXCLUDE);
+        }
 
         /**
          * Indicates that by default properties will be obfuscated if they are JSON objects or arrays (default).
@@ -334,23 +339,53 @@ public final class JSONObfuscator extends Obfuscator {
 
         /**
          * Indicates that by default properties will be obfuscated if they are JSON objects (default).
-         * This can be overridden per property using {@link PropertyConfigurer#excludeObjects()}
+         * This method is an alias for {@link #forObjectsByDefault(ObfuscationMode)} in combination with {@link ObfuscationMode#OBFUSCATE}.
          * <p>
          * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
-        Builder includeObjectsByDefault();
+        default Builder includeObjectsByDefault() {
+            return forObjectsByDefault(ObfuscationMode.OBFUSCATE);
+        }
 
         /**
          * Indicates that by default properties will be obfuscated if they are JSON arrays (default).
-         * This can be overridden per property using {@link PropertyConfigurer#excludeArrays()}
+         * This method is an alias for {@link #forArraysByDefault(ObfuscationMode)} in combination with {@link ObfuscationMode#OBFUSCATE}.
          * <p>
          * Note that this will not change what will be obfuscated for any property that was already added.
          *
          * @return This object.
          */
-        Builder includeArraysByDefault();
+        default Builder includeArraysByDefault() {
+            return forArraysByDefault(ObfuscationMode.OBFUSCATE);
+        }
+
+        /**
+         * Indicates how to handle properties if they are JSON objects. The default is {@link ObfuscationMode#OBFUSCATE}.
+         * This can be overridden per property using {@link PropertyConfigurer#forObjects(ObfuscationMode)}
+         * <p>
+         * Note that this will not change what will be obfuscated for any property that was already added.
+         *
+         * @param obfuscationMode The obfuscation mode that determines how to handle properties.
+         * @return This object.
+         * @throws NullPointerException If the given obfuscation mode is {@code null}.
+         * @since 1.3
+         */
+        Builder forObjectsByDefault(ObfuscationMode obfuscationMode);
+
+        /**
+         * Indicates how to handle properties if they are JSON arrays. The default is {@link ObfuscationMode#OBFUSCATE}.
+         * This can be overridden per property using {@link PropertyConfigurer#forArrays(ObfuscationMode)}
+         * <p>
+         * Note that this will not change what will be obfuscated for any property that was already added.
+         *
+         * @param obfuscationMode The obfuscation mode that determines how to handle properties.
+         * @return This object.
+         * @throws NullPointerException If the given obfuscation mode is {@code null}.
+         * @since 1.3
+         */
+        Builder forArraysByDefault(ObfuscationMode obfuscationMode);
 
         /**
          * Sets the warning to include if a {@link JsonParseException} is thrown.
@@ -404,7 +439,7 @@ public final class JSONObfuscator extends Obfuscator {
          * Indicates that properties with the current name will not be obfuscated if they are JSON objects or arrays.
          * This method is shorthand for calling both {@link #excludeObjects()} and {@link #excludeArrays()}.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
         default PropertyConfigurer scalarsOnly() {
             return excludeObjects()
@@ -413,23 +448,29 @@ public final class JSONObfuscator extends Obfuscator {
 
         /**
          * Indicates that properties with the current name will not be obfuscated if they are JSON objects.
+         * This method is an alias for {@link #forObjects(ObfuscationMode)} in combination with {@link ObfuscationMode#EXCLUDE}.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
-        PropertyConfigurer excludeObjects();
+        default PropertyConfigurer excludeObjects() {
+            return forObjects(ObfuscationMode.EXCLUDE);
+        }
 
         /**
          * Indicates that properties with the current name will not be obfuscated if they are JSON arrays.
+         * This method is an alias for {@link #forArrays(ObfuscationMode)} in combination with {@link ObfuscationMode#EXCLUDE}.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
-        PropertyConfigurer excludeArrays();
+        default PropertyConfigurer excludeArrays() {
+            return forArrays(ObfuscationMode.EXCLUDE);
+        }
 
         /**
          * Indicates that properties with the current name will be obfuscated if they are JSON objects or arrays.
          * This method is shorthand for calling both {@link #includeObjects()} and {@link #includeArrays()}.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
         default PropertyConfigurer all() {
             return includeObjects()
@@ -438,17 +479,66 @@ public final class JSONObfuscator extends Obfuscator {
 
         /**
          * Indicates that properties with the current name will be obfuscated if they are JSON objects.
+         * This method is an alias for {@link #forObjects(ObfuscationMode)} in combination with {@link ObfuscationMode#OBFUSCATE}.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
-        PropertyConfigurer includeObjects();
+        default PropertyConfigurer includeObjects() {
+            return forObjects(ObfuscationMode.OBFUSCATE);
+        }
 
         /**
          * Indicates that properties with the current name will be obfuscated if they are JSON arrays.
+         * This method is an alias for {@link #forArrays(ObfuscationMode)} in combination with {@link ObfuscationMode#OBFUSCATE}.
          *
-         * @return An object that can be used to configure the property, or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
-        PropertyConfigurer includeArrays();
+        default PropertyConfigurer includeArrays() {
+            return forArrays(ObfuscationMode.OBFUSCATE);
+        }
+
+        /**
+         * Indicates how to handle properties if they are JSON objects. The default is {@link ObfuscationMode#OBFUSCATE}.
+         *
+         * @param obfuscationMode The obfuscation mode that determines how to handle properties.
+         * @return This object.
+         * @throws NullPointerException If the given obfuscation mode is {@code null}.
+         * @since 1.3
+         */
+        PropertyConfigurer forObjects(ObfuscationMode obfuscationMode);
+
+        /**
+         * Indicates how to handle properties if they are JSON arrays. The default is {@link ObfuscationMode#OBFUSCATE}.
+         *
+         * @param obfuscationMode The obfuscation mode that determines how to handle properties.
+         * @return This object.
+         * @throws NullPointerException If the given obfuscation mode is {@code null}.
+         * @since 1.3
+         */
+        PropertyConfigurer forArrays(ObfuscationMode obfuscationMode);
+
+        /**
+         * The possible ways to deal with nested objects and arrays.
+         *
+         * @author Rob Spoor
+         * @since 1.3
+         */
+        enum ObfuscationMode {
+            /** Don't obfuscate nested objects or arrays, but instead traverse into them. **/
+            EXCLUDE,
+
+            /** Obfuscate nested objects and arrays completely. **/
+            OBFUSCATE,
+
+            /** Don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties. **/
+            INHERIT,
+
+            /**
+             * Don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties.
+             * If a nested property has its own obfuscator defined this will be used instead.
+             **/
+            INHERIT_OVERRIDABLE,
+        }
     }
 
     /**
@@ -465,8 +555,7 @@ public final class JSONObfuscator extends Obfuscator {
          * Use {@code null} to omit the indicator.
          *
          * @param pattern The pattern to use as indicator.
-         * @return An object that can be used to configure the handling when the obfuscated result exceeds a pre-defined limit,
-         *         or continue building {@link JSONObfuscator JSONObfuscators}.
+         * @return This object.
          */
         LimitConfigurer withTruncatedIndicator(String pattern);
     }
@@ -481,15 +570,15 @@ public final class JSONObfuscator extends Obfuscator {
         private String truncatedIndicator;
 
         // default settings
-        private boolean obfuscateObjectsByDefault;
-        private boolean obfuscateArraysByDefault;
+        private ObfuscationMode forObjectsByDefault;
+        private ObfuscationMode forArraysByDefault;
 
         // per property settings
         private String property;
         private Obfuscator obfuscator;
         private CaseSensitivity caseSensitivity;
-        private boolean obfuscateObjects;
-        private boolean obfuscateArrays;
+        private ObfuscationMode forObjects;
+        private ObfuscationMode forArrays;
 
         private ObfuscatorBuilder() {
             properties = new MapBuilder<>();
@@ -499,8 +588,8 @@ public final class JSONObfuscator extends Obfuscator {
             limit = Long.MAX_VALUE;
             truncatedIndicator = "... (total: %d)"; //$NON-NLS-1$
 
-            obfuscateObjectsByDefault = true;
-            obfuscateArraysByDefault = true;
+            forObjectsByDefault = ObfuscationMode.OBFUSCATE;
+            forArraysByDefault = ObfuscationMode.OBFUSCATE;
         }
 
         @Override
@@ -512,8 +601,8 @@ public final class JSONObfuscator extends Obfuscator {
             this.property = property;
             this.obfuscator = obfuscator;
             this.caseSensitivity = null;
-            this.obfuscateObjects = obfuscateObjectsByDefault;
-            this.obfuscateArrays = obfuscateArraysByDefault;
+            this.forObjects = forObjectsByDefault;
+            this.forArrays = forArraysByDefault;
 
             return this;
         }
@@ -527,8 +616,8 @@ public final class JSONObfuscator extends Obfuscator {
             this.property = property;
             this.obfuscator = obfuscator;
             this.caseSensitivity = caseSensitivity;
-            this.obfuscateObjects = obfuscateObjectsByDefault;
-            this.obfuscateArrays = obfuscateArraysByDefault;
+            this.forObjects = forObjectsByDefault;
+            this.forArrays = forArraysByDefault;
 
             return this;
         }
@@ -546,50 +635,26 @@ public final class JSONObfuscator extends Obfuscator {
         }
 
         @Override
-        public Builder excludeObjectsByDefault() {
-            obfuscateObjectsByDefault = false;
+        public Builder forObjectsByDefault(ObfuscationMode obfuscationMode) {
+            forObjectsByDefault = Objects.requireNonNull(obfuscationMode);
             return this;
         }
 
         @Override
-        public Builder excludeArraysByDefault() {
-            obfuscateArraysByDefault = false;
+        public Builder forArraysByDefault(ObfuscationMode obfuscationMode) {
+            forArraysByDefault = Objects.requireNonNull(obfuscationMode);
             return this;
         }
 
         @Override
-        public Builder includeObjectsByDefault() {
-            obfuscateObjectsByDefault = true;
+        public PropertyConfigurer forObjects(ObfuscationMode obfuscationMode) {
+            forObjects = Objects.requireNonNull(obfuscationMode);
             return this;
         }
 
         @Override
-        public Builder includeArraysByDefault() {
-            obfuscateArraysByDefault = true;
-            return this;
-        }
-
-        @Override
-        public PropertyConfigurer excludeObjects() {
-            obfuscateObjects = false;
-            return this;
-        }
-
-        @Override
-        public PropertyConfigurer excludeArrays() {
-            obfuscateArrays = false;
-            return this;
-        }
-
-        @Override
-        public PropertyConfigurer includeObjects() {
-            obfuscateObjects = true;
-            return this;
-        }
-
-        @Override
-        public PropertyConfigurer includeArrays() {
-            obfuscateArrays = true;
+        public PropertyConfigurer forArrays(ObfuscationMode obfuscationMode) {
+            forArrays = Objects.requireNonNull(obfuscationMode);
             return this;
         }
 
@@ -620,7 +685,7 @@ public final class JSONObfuscator extends Obfuscator {
 
         private void addLastProperty() {
             if (property != null) {
-                PropertyConfig propertyConfig = new PropertyConfig(obfuscator, obfuscateObjects, obfuscateArrays);
+                PropertyConfig propertyConfig = new PropertyConfig(obfuscator, forObjects, forArrays);
                 if (caseSensitivity != null) {
                     properties.withEntry(property, propertyConfig, caseSensitivity);
                 } else {
@@ -631,8 +696,8 @@ public final class JSONObfuscator extends Obfuscator {
             property = null;
             obfuscator = null;
             caseSensitivity = null;
-            obfuscateObjects = obfuscateObjectsByDefault;
-            obfuscateArrays = obfuscateArraysByDefault;
+            forObjects = forObjectsByDefault;
+            forArrays = forArraysByDefault;
         }
 
         @Override

@@ -78,6 +78,7 @@ import com.github.robtimus.junit.support.extension.testlogger.Reload4jLoggerCont
 import com.github.robtimus.junit.support.extension.testlogger.TestLogger;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
@@ -282,6 +283,28 @@ class JSONObfuscatorTest {
             ObfuscatingScalarsOverridden() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.scalar",
                         () -> createObfuscatorObfuscatingScalarsOnly(builder().allByDefault()));
+            }
+        }
+
+        @Nested
+        @DisplayName("obfuscating with INHERIT mode")
+        @TestInstance(Lifecycle.PER_CLASS)
+        class ObfuscatingInherited extends ObfuscatorTest {
+
+            ObfuscatingInherited() {
+                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.inherited",
+                        () -> createObfuscatorWithObfuscatorMode(builder(), ObfuscationMode.INHERIT));
+            }
+        }
+
+        @Nested
+        @DisplayName("obfuscating with INHERITED_OVERRIDABLE mode")
+        @TestInstance(Lifecycle.PER_CLASS)
+        class ObfuscatingInheritedOverridable extends ObfuscatorTest {
+
+            ObfuscatingInheritedOverridable() {
+                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.inherited-overridable",
+                        () -> createObfuscatorWithObfuscatorMode(builder(), ObfuscationMode.INHERIT_OVERRIDABLE));
             }
         }
 
@@ -618,8 +641,8 @@ class JSONObfuscatorTest {
                 .withProperty("float", obfuscator)
                 .withProperty("booleanTrue", obfuscator)
                 .withProperty("booleanFalse", obfuscator)
-                .withProperty("object", obfuscator)
-                .withProperty("array", obfuscator)
+                .withProperty("object", fixedLength(3, 'o'))
+                .withProperty("array", fixedLength(3, 'a'))
                 .withProperty("null", obfuscator)
                 .withProperty("notObfuscated", none())
                 .build();
@@ -633,8 +656,8 @@ class JSONObfuscatorTest {
                 .withProperty("FLOAT", obfuscator)
                 .withProperty("BOOLEANTRUE", obfuscator)
                 .withProperty("BOOLEANFALSE", obfuscator)
-                .withProperty("OBJECT", obfuscator)
-                .withProperty("ARRAY", obfuscator)
+                .withProperty("OBJECT", fixedLength(3, 'o'))
+                .withProperty("ARRAY", fixedLength(3, 'a'))
                 .withProperty("NULL", obfuscator)
                 .withProperty("NOTOBFUSCATED", none())
                 .build();
@@ -648,8 +671,8 @@ class JSONObfuscatorTest {
                 .withProperty("float", obfuscator).all()
                 .withProperty("booleanTrue", obfuscator).all()
                 .withProperty("booleanFalse", obfuscator).all()
-                .withProperty("object", obfuscator).all()
-                .withProperty("array", obfuscator).all()
+                .withProperty("object", fixedLength(3, 'o')).all()
+                .withProperty("array", fixedLength(3, 'a')).all()
                 .withProperty("null", obfuscator).all()
                 .withProperty("notObfuscated", none()).all()
                 .build();
@@ -663,10 +686,27 @@ class JSONObfuscatorTest {
                 .withProperty("float", obfuscator).scalarsOnly()
                 .withProperty("booleanTrue", obfuscator).scalarsOnly()
                 .withProperty("booleanFalse", obfuscator).scalarsOnly()
-                .withProperty("object", obfuscator).scalarsOnly()
-                .withProperty("array", obfuscator).scalarsOnly()
+                .withProperty("object", fixedLength(3, 'o')).scalarsOnly()
+                .withProperty("array", fixedLength(3, 'a')).scalarsOnly()
                 .withProperty("null", obfuscator).scalarsOnly()
                 .withProperty("notObfuscated", none()).scalarsOnly()
+                .build();
+    }
+
+    private static Obfuscator createObfuscatorWithObfuscatorMode(Builder builder, ObfuscationMode obfuscationMode) {
+        Obfuscator obfuscator = fixedLength(3);
+        return builder
+                .forObjectsByDefault(obfuscationMode)
+                .forArraysByDefault(obfuscationMode)
+                .withProperty("string", obfuscator)
+                .withProperty("int", obfuscator)
+                .withProperty("float", obfuscator)
+                .withProperty("booleanTrue", obfuscator)
+                .withProperty("booleanFalse", obfuscator)
+                .withProperty("object", fixedLength(3, 'o'))
+                .withProperty("array", fixedLength(3, 'a'))
+                .withProperty("null", obfuscator)
+                .withProperty("notObfuscated", none())
                 .build();
     }
 

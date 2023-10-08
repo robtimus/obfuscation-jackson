@@ -18,11 +18,14 @@
 package com.github.robtimus.obfuscation.jackson;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Map;
-import java.util.function.Predicate;
+import java.util.function.Function;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.util.JsonParserDelegate;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 
 final class ObfuscatingJsonParser extends JsonParserDelegate {
 
@@ -39,9 +42,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     private int tokenStart;
     private int tokenEnd;
 
-    private PropertyConfig currentProperty;
-    private JsonToken currentStructure;
-    private int depth = 0;
+    private final Deque<ObfuscatedProperty> currentProperties = new ArrayDeque<>();
 
     ObfuscatingJsonParser(JsonParser parser, Source source, int start, int end, Appendable destination, Map<String, PropertyConfig> properties) {
         super(parser);
@@ -84,13 +85,9 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
                 valueNumber();
                 break;
             case VALUE_TRUE:
-                valueBoolean(token);
-                break;
             case VALUE_FALSE:
-                valueBoolean(token);
-                break;
             case VALUE_NULL:
-                valueNull();
+                valueOther(token);
                 break;
             default:
                 break;
@@ -99,7 +96,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     private void startObject() throws IOException {
-        startStructure(JsonToken.START_OBJECT, p -> p.obfuscateObjects);
+        startStructure(JsonToken.START_OBJECT, p -> p.forObjects);
     }
 
     private void endObject() throws IOException {
@@ -107,48 +104,53 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     private void startArray() throws IOException {
-        startStructure(JsonToken.START_ARRAY, p -> p.obfuscateArrays);
+        startStructure(JsonToken.START_ARRAY, p -> p.forArrays);
     }
 
     private void endArray() throws IOException {
         endStructure(JsonToken.START_ARRAY, JsonToken.END_ARRAY);
     }
 
-    private void startStructure(JsonToken startToken, Predicate<PropertyConfig> doValidate) throws IOException {
+    private void startStructure(JsonToken startToken, Function<PropertyConfig, ObfuscationMode> getObfuscationMode) throws IOException {
+        ObfuscatedProperty currentProperty = currentProperties.peekLast();
         if (currentProperty != null) {
-            if (depth == 0) {
-                if (doValidate.test(currentProperty)) {
+            if (currentProperty.depth == 0) {
+                // The start of the structure that's being obfuscated
+                ObfuscationMode obfuscationMode = getObfuscationMode.apply(currentProperty.config);
+                if (obfuscationMode == ObfuscationMode.EXCLUDE) {
+                    // There is an obfuscator for the structure property, but the obfuscation mode prohibits handling it, so discard the property
+                    currentProperties.removeLast();
+                } else {
                     updateOtherTokenFields(startToken);
                     appendUntilToken();
 
-                    currentStructure = startToken;
-                    depth++;
-                } else {
-                    // There is an obfuscator for the structure property, but the obfuscation mode prohibits obfuscating it; reset the obfuscation
-                    currentProperty = null;
+                    currentProperty.structure = startToken;
+                    currentProperty.obfuscationMode = obfuscationMode;
+                    currentProperty.depth++;
                 }
-            } else if (currentStructure == startToken) {
+            } else if (currentProperty.structure == startToken) {
                 // In a nested structure that's being obfuscated; do nothing
-                depth++;
+                currentProperty.depth++;
             }
             // else in a nested structure that's being obfuscated; do nothing
         }
-        // else not obfuscating
+        // else not obfuscating anything
     }
 
     private void endStructure(JsonToken startToken, JsonToken endToken) throws IOException {
-        if (currentStructure == startToken) {
-            depth--;
-            if (depth == 0) {
-                if (currentProperty.performObfuscation) {
+        ObfuscatedProperty currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.structure == startToken) {
+            currentProperty.depth--;
+            if (currentProperty.depth == 0) {
+                if (currentProperty.obfuscateStructure()) {
                     int originalTokenStart = tokenStart;
                     updateOtherTokenFields(endToken);
-                    obfuscateUntilToken(originalTokenStart);
+                    obfuscateUntilToken(currentProperty, originalTokenStart);
                 }
-                // else the obfuscator is Obfuscator.none(), which means we don't need to obfuscate
+                // else the obfuscator is Obfuscator.none(), which means we don't need to obfuscate,
+                // or the structure itself should not be obfuscated
 
-                currentProperty = null;
-                currentStructure = null;
+                currentProperties.removeLast();
             }
             // else still in a nested structure array that's being obfuscated
         }
@@ -156,15 +158,20 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     private void fieldName() throws IOException {
-        if (currentProperty == null) {
-            currentProperty = properties.get(getCurrentName());
+        ObfuscatedProperty currentProperty = currentProperties.peekLast();
+        if (currentProperty == null || currentProperty.allowsOverriding()) {
+            PropertyConfig config = properties.get(getCurrentName());
+            if (config != null) {
+                currentProperty = new ObfuscatedProperty(config);
+                currentProperties.addLast(currentProperty);
+            }
 
             if (source.needsTruncating()) {
                 updateOtherTokenFields(JsonToken.FIELD_NAME);
                 appendUntilToken();
                 source.truncate();
             }
-        } else if (!currentProperty.performObfuscation && source.needsTruncating()) {
+        } else if (!currentProperty.config.performObfuscation && source.needsTruncating()) {
             // in a nested object or array that's being obfuscated using Obfuscator.none(), which means we can just append data already
             updateOtherTokenFields(JsonToken.FIELD_NAME);
             appendUntilToken();
@@ -174,51 +181,45 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     private void valueString() throws IOException {
-        if (currentProperty != null && depth == 0) {
+        ObfuscatedProperty currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.obfuscateScalar()) {
             updateStringTokenFields();
             appendUntilToken();
-            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
-            obfuscateCurrentToken();
+            obfuscateCurrentToken(currentProperty);
 
-            currentProperty = null;
+            if (currentProperty.depth == 0) {
+                currentProperties.removeLast();
+            }
         }
-        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
+        // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
     }
 
     private void valueNumber() throws IOException {
-        if (currentProperty != null && depth == 0) {
+        ObfuscatedProperty currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.obfuscateScalar()) {
             updateNumberTokenFields();
             appendUntilToken();
-            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
-            obfuscateCurrentToken();
+            obfuscateCurrentToken(currentProperty);
 
-            currentProperty = null;
+            if (currentProperty.depth == 0) {
+                currentProperties.removeLast();
+            }
         }
-        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
+        // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
     }
 
-    private void valueBoolean(JsonToken token) throws IOException {
-        if (currentProperty != null && depth == 0) {
+    private void valueOther(JsonToken token) throws IOException {
+        ObfuscatedProperty currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.obfuscateScalar()) {
             updateOtherTokenFields(token);
             appendUntilToken();
-            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
-            obfuscateCurrentToken();
+            obfuscateCurrentToken(currentProperty);
 
-            currentProperty = null;
+            if (currentProperty.depth == 0) {
+                currentProperties.removeLast();
+            }
         }
-        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
-    }
-
-    private void valueNull() throws IOException {
-        if (currentProperty != null && depth == 0) {
-            updateOtherTokenFields(JsonToken.VALUE_NULL);
-            appendUntilToken();
-            // obfuscate even if the obfuscator is Obfuscator.none(), as that will already append the original value
-            obfuscateCurrentToken();
-
-            currentProperty = null;
-        }
-        // else not obfuscating, or in a nested object or or array that's being obfuscated; do nothing
+        // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
     }
 
     private void updateStringTokenFields() throws IOException {
@@ -270,17 +271,48 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
         textIndex = tokenStart;
     }
 
-    private void obfuscateUntilToken(int originalTokenStart) throws IOException {
-        source.obfuscateText(originalTokenStart, tokenEnd, currentProperty.obfuscator, destination);
+    private void obfuscateUntilToken(ObfuscatedProperty currentProperty, int originalTokenStart) throws IOException {
+        source.obfuscateText(originalTokenStart, tokenEnd, currentProperty.config.obfuscator, destination);
         textIndex = tokenEnd;
     }
 
-    private void obfuscateCurrentToken() throws IOException {
-        currentProperty.obfuscator.obfuscateText(tokenValue, destination);
+    private void obfuscateCurrentToken(ObfuscatedProperty currentProperty) throws IOException {
+        currentProperty.config.obfuscator.obfuscateText(tokenValue, destination);
         textIndex = tokenEnd;
     }
 
     void appendRemainder() throws IOException {
         textIndex = source.appendRemainder(textIndex, textEnd, destination);
+    }
+
+    private static final class ObfuscatedProperty {
+
+        private final PropertyConfig config;
+        private JsonToken structure;
+        private ObfuscationMode obfuscationMode;
+        private int depth = 0;
+
+        private ObfuscatedProperty(PropertyConfig config) {
+            this.config = config;
+        }
+
+        private boolean allowsOverriding() {
+            // OBFUSCATE and INHERITED do not allow overriding
+            // No need to include EXCLUDE; if that occurs the ObfuscatedProperty is discarded
+            return obfuscationMode == ObfuscationMode.INHERIT_OVERRIDABLE;
+        }
+
+        private boolean obfuscateStructure() {
+            // Don't obfuscate the entire structure if Obfuscator.none() is used
+            return config.performObfuscation && obfuscationMode == ObfuscationMode.OBFUSCATE;
+        }
+
+        private boolean obfuscateScalar() {
+            // Don't obfuscate the scalar if Obfuscator.none() is used
+            // Obfuscate if depth == 0 (the property is for the scalar itself),
+            // or if the obfuscation mode is INHERITED or INHERITED_OVERRIDABLE (EXCLUDE is discarded)
+            return config.performObfuscation
+                    && (depth == 0 || obfuscationMode != ObfuscationMode.OBFUSCATE);
+        }
     }
 }
