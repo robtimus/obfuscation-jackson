@@ -79,7 +79,9 @@ public final class JSONObfuscator extends Obfuscator {
             // the source is not unnecessary
             "INCLUDE_SOURCE_IN_LOCATION",
             // use Double.parseDouble
-            "USE_FAST_DOUBLE_PARSER"
+            "USE_FAST_DOUBLE_PARSER",
+            // Use built-in parsing for BigDecimal and BigInteger
+            "USE_FAST_BIG_NUMBER_PARSER"
     )));
 
     // Allow all features, to be as lenient as possible

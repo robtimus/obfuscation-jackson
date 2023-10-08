@@ -62,10 +62,9 @@
   </issueManagement>
 
   <properties>
-    <version.jackson>2.14.1</version.jackson>
-    <version.jackson.javadoc>2.14</version.jackson.javadoc>
+    <version.jackson>2.15.2</version.jackson>
     <version.junit-support>2.2</version.junit-support>
-    <version.obfuscation-core>1.4</version.obfuscation-core>
+    <version.obfuscation-core>1.5</version.obfuscation-core>
     <version.pioneer>1.9.1</version.pioneer>
     <version.slf4j>1.7.36</version.slf4j>
   </properties>
@@ -138,7 +137,7 @@
           <configuration>
             <links>
               <link>https://robtimus.github.io/obfuscation-core/apidocs/</link>
-              <link>https://fasterxml.github.io/jackson-core/javadoc/${version.jackson.javadoc}/</link>
+              <link>https://javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/${version.jackson}/</link>
             </links>
           </configuration>
         </plugin>
@@ -284,8 +283,8 @@
             <configuration>
               <argLine>
                 @{argLine}
-                <!-- The following were added in Jackson 2.11 and 2.14 -->
-                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures=USE_FAST_DOUBLE_PARSER
+                <!-- The following were added in Jackson 2.11, 2.14 and 2.15 -->
+                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures=USE_FAST_DOUBLE_PARSER,USE_FAST_BIG_NUMBER_PARSER
                 -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures=ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS,ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS
               </argLine>
             </configuration>
