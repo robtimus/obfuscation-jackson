@@ -27,7 +27,7 @@
   </parent>
 
   <artifactId>obfuscation-jackson</artifactId>
-  <version>1.3-SNAPSHOT</version>
+  <version>1.3</version>
   <packaging>jar</packaging>
 
   <name>obfuscation-jackson</name>
@@ -52,7 +52,7 @@
   <scm>
     <connection>scm:git:git@github.com:robtimus/obfuscation-jackson.git</connection>
     <developerConnection>scm:git:git@github.com:robtimus/obfuscation-jackson.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>1.3</tag>
     <url>https://github.com/robtimus/obfuscation-jackson</url>
   </scm>
 
