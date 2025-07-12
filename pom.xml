@@ -22,7 +22,7 @@
   <parent>
     <groupId>com.github.robtimus</groupId>
     <artifactId>robtimus-parent</artifactId>
-    <version>1.15</version>
+    <version>1.16</version>
     <relativePath />
   </parent>
 
@@ -62,7 +62,7 @@
   </issueManagement>
 
   <properties>
-    <version.jackson>2.15.2</version.jackson>
+    <version.jackson>2.19.1</version.jackson>
     <version.junit-support>2.2</version.junit-support>
     <version.obfuscation-core>1.5</version.obfuscation-core>
     <version.pioneer>1.9.1</version.pioneer>
@@ -289,9 +289,9 @@
             <configuration>
               <argLine>
                 @{argLine}
-                <!-- The following were added in Jackson 2.11, 2.14 and 2.15 -->
+                <!-- The following were added in Jackson 2.11, 2.14, 2.15 and 2.19 -->
                 -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures=USE_FAST_DOUBLE_PARSER,USE_FAST_BIG_NUMBER_PARSER
-                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures=ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS,ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS
+                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures=ALLOW_RS_CONTROL_CHAR,ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS,ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS
               </argLine>
             </configuration>
           </plugin>

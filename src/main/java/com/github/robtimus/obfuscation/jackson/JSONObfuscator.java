@@ -92,6 +92,7 @@ public final class JSONObfuscator extends Obfuscator {
             "ALLOW_SINGLE_QUOTES",
             "ALLOW_UNQUOTED_FIELD_NAMES",
             "ALLOW_UNESCAPED_CONTROL_CHARS",
+            "ALLOW_RS_CONTROL_CHAR",
             "ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER",
             "ALLOW_LEADING_ZEROS_FOR_NUMBERS",
             "ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS",
