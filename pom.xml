@@ -291,7 +291,7 @@
                 @{argLine}
                 <!-- The following were added in Jackson 2.11, 2.14, 2.15 and 2.19 -->
                 -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures=USE_FAST_DOUBLE_PARSER,USE_FAST_BIG_NUMBER_PARSER
-                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures=ALLOW_RS_CONTROL_CHAR,ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS,ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS,ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS
+                -Dcom.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures=ALLOW_RS_CONTROL_CHAR,ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS,ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS
               </argLine>
             </configuration>
           </plugin>
