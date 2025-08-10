@@ -160,7 +160,7 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     private void fieldName() throws IOException {
         ObfuscatedProperty currentProperty = currentProperties.peekLast();
         if (currentProperty == null || currentProperty.allowsOverriding()) {
-            PropertyConfig config = properties.get(getCurrentName());
+            PropertyConfig config = properties.get(currentName());
             if (config != null) {
                 currentProperty = new ObfuscatedProperty(config);
                 currentProperties.addLast(currentProperty);
@@ -241,11 +241,11 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     private int tokenStart() {
-        return textOffset + (int) getTokenLocation().getCharOffset();
+        return textOffset + (int) currentTokenLocation().getCharOffset();
     }
 
     private int tokenEnd() {
-        return textOffset + (int) getCurrentLocation().getCharOffset();
+        return textOffset + (int) currentLocation().getCharOffset();
     }
 
     private int stringValueStart() {
