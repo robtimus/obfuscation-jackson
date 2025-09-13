@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+/**
+ * Provides functionality for obfuscating JSON using Jackson.
+ */
 module com.github.robtimus.obfuscation.jackson {
     requires transitive com.github.robtimus.obfuscation;
     requires com.fasterxml.jackson.core;
