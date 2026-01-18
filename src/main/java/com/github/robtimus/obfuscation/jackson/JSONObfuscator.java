@@ -41,6 +41,7 @@ import com.github.robtimus.obfuscation.support.LimitAppendable;
 import com.github.robtimus.obfuscation.support.MapBuilder;
 import tools.jackson.core.ObjectReadContext;
 import tools.jackson.core.StreamReadFeature;
+import tools.jackson.core.exc.JacksonIOException;
 import tools.jackson.core.exc.StreamReadException;
 import tools.jackson.core.json.JsonFactory;
 import tools.jackson.core.json.JsonFactoryBuilder;
@@ -187,6 +188,8 @@ public final class JSONObfuscator extends Obfuscator {
                 destination.append(malformedJSONWarning);
             }
         } catch (UncheckedIOException e) {
+            throw e.getCause();
+        } catch (JacksonIOException e) { // NOSONAR; combining the two catch clauses makes e.getCause() return Throwable instead of IOException
             throw e.getCause();
         }
     }

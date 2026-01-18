@@ -59,6 +59,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.io.input.BrokenReader;
 import org.apache.commons.io.output.BrokenWriter;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Level;
@@ -199,6 +200,21 @@ class JSONObfuscatorTest {
         Obfuscator obfuscator = createObfuscator();
         assertEquals(obfuscator.hashCode(), obfuscator.hashCode());
         assertEquals(obfuscator.hashCode(), createObfuscator().hashCode());
+    }
+
+    @Test
+    @DisplayName("broken source")
+    void testBrokenSource() {
+        Obfuscator obfuscator = createObfuscator();
+
+        IOException thrown = new IOException();
+
+        Writer destination = new StringWriter();
+        @SuppressWarnings("resource")
+        Reader reader = new BrokenReader(() -> thrown);
+
+        IOException exception = assertThrows(IOException.class, () -> obfuscator.obfuscateText(reader, destination));
+        assertSame(thrown, exception);
     }
 
     @Test
