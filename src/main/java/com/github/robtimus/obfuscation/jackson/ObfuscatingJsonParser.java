@@ -18,14 +18,15 @@
 package com.github.robtimus.obfuscation.jackson;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
 import java.util.function.Function;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.util.JsonParserDelegate;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.util.JsonParserDelegate;
 
 final class ObfuscatingJsonParser extends JsonParserDelegate {
 
@@ -56,41 +57,27 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
     }
 
     @Override
-    public JsonToken nextToken() throws IOException {
+    public JsonToken nextToken() {
         JsonToken token = super.nextToken();
         if (token == null) {
             return token;
         }
-        switch (token) {
-            case START_OBJECT:
-                startObject();
-                break;
-            case END_OBJECT:
-                endObject();
-                break;
-            case START_ARRAY:
-                startArray();
-                break;
-            case END_ARRAY:
-                endArray();
-                break;
-            case FIELD_NAME:
-                fieldName();
-                break;
-            case VALUE_STRING:
-                valueString();
-                break;
-            case VALUE_NUMBER_INT:
-            case VALUE_NUMBER_FLOAT:
-                valueNumber();
-                break;
-            case VALUE_TRUE:
-            case VALUE_FALSE:
-            case VALUE_NULL:
-                valueOther(token);
-                break;
-            default:
-                break;
+        try {
+            switch (token) {
+                case START_OBJECT -> startObject();
+                case END_OBJECT -> endObject();
+                case START_ARRAY -> startArray();
+                case END_ARRAY -> endArray();
+                case PROPERTY_NAME -> fieldName();
+                case VALUE_STRING -> valueString();
+                case VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT -> valueNumber();
+                case VALUE_TRUE, VALUE_FALSE, VALUE_NULL -> valueOther(token);
+                default -> {
+                    // do nothing
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
         return token;
     }
@@ -167,13 +154,13 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
             }
 
             if (source.needsTruncating()) {
-                updateOtherTokenFields(JsonToken.FIELD_NAME);
+                updateOtherTokenFields(JsonToken.PROPERTY_NAME);
                 appendUntilToken();
                 source.truncate();
             }
         } else if (!currentProperty.config.performObfuscation && source.needsTruncating()) {
             // in a nested object or array that's being obfuscated using Obfuscator.none(), which means we can just append data already
-            updateOtherTokenFields(JsonToken.FIELD_NAME);
+            updateOtherTokenFields(JsonToken.PROPERTY_NAME);
             appendUntilToken();
             source.truncate();
         }
@@ -222,13 +209,13 @@ final class ObfuscatingJsonParser extends JsonParserDelegate {
         // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
     }
 
-    private void updateStringTokenFields() throws IOException {
+    private void updateStringTokenFields() {
         tokenValue = getValueAsString();
         tokenStart = stringValueStart();
         tokenEnd = stringValueEnd();
     }
 
-    private void updateNumberTokenFields() throws IOException {
+    private void updateNumberTokenFields() {
         tokenValue = getValueAsString();
         tokenStart = tokenStart();
         tokenEnd = tokenEnd();

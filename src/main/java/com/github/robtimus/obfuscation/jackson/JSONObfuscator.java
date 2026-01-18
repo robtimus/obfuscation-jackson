@@ -24,21 +24,14 @@ import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.counting;
 import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.io.Writer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonFactoryBuilder;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 import com.github.robtimus.obfuscation.support.CachingObfuscatingWriter;
@@ -46,6 +39,12 @@ import com.github.robtimus.obfuscation.support.CaseSensitivity;
 import com.github.robtimus.obfuscation.support.CountingReader;
 import com.github.robtimus.obfuscation.support.LimitAppendable;
 import com.github.robtimus.obfuscation.support.MapBuilder;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.json.JsonFactoryBuilder;
+import tools.jackson.core.json.JsonReadFeature;
 
 /**
  * An obfuscator that obfuscates JSON properties in {@link CharSequence CharSequences} or the contents of {@link Reader Readers}.
@@ -61,17 +60,14 @@ public final class JSONObfuscator extends Obfuscator {
 
     // Allow most non-deprecated features, to be as lenient as possible
     @SuppressWarnings("nls")
-    static final Set<String> ENABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-            "ALLOW_COMMENTS",
-            "ALLOW_YAML_COMMENTS",
-            "ALLOW_UNQUOTED_FIELD_NAMES",
-            "ALLOW_SINGLE_QUOTES",
-            "IGNORE_UNDEFINED"
-    )));
+    static final Set<String> ENABLED_STREAM_READ_FEATURES = Set.of(
+            "IGNORE_UNDEFINED",
+            "CLEAR_CURRENT_TOKEN_ON_CLOSE"
+    );
 
     // Disable explicitly
     @SuppressWarnings("nls")
-    static final Set<String> DISABLED_JSON_PARSER_FEATURES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+    static final Set<String> DISABLED_STREAM_READ_FEATURES = Set.of(
             // the source is not ours to close
             "AUTO_CLOSE_SOURCE",
             // don't fail if there are duplicates, to be as lenient as possible
@@ -82,15 +78,15 @@ public final class JSONObfuscator extends Obfuscator {
             "USE_FAST_DOUBLE_PARSER",
             // Use built-in parsing for BigDecimal and BigInteger
             "USE_FAST_BIG_NUMBER_PARSER"
-    )));
+    );
 
     // Allow all features, to be as lenient as possible
     @SuppressWarnings("nls")
-    static final Set<String> ENABLED_JSON_READ_FEATURES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+    static final Set<String> ENABLED_JSON_READ_FEATURES = Set.of(
             "ALLOW_JAVA_COMMENTS",
             "ALLOW_YAML_COMMENTS",
             "ALLOW_SINGLE_QUOTES",
-            "ALLOW_UNQUOTED_FIELD_NAMES",
+            "ALLOW_UNQUOTED_PROPERTY_NAMES",
             "ALLOW_UNESCAPED_CONTROL_CHARS",
             "ALLOW_RS_CONTROL_CHAR",
             "ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER",
@@ -101,7 +97,7 @@ public final class JSONObfuscator extends Obfuscator {
             "ALLOW_NON_NUMERIC_NUMBERS",
             "ALLOW_MISSING_VALUES",
             "ALLOW_TRAILING_COMMA"
-    )));
+    );
 
     private final Map<String, PropertyConfig> properties;
 
@@ -131,17 +127,15 @@ public final class JSONObfuscator extends Obfuscator {
                 builder = builder.enable(feature);
             }
         }
-
-        JsonFactory factory = builder.build();
-        for (JsonParser.Feature feature : JsonParser.Feature.values()) {
+        for (StreamReadFeature feature : StreamReadFeature.values()) {
             String featureName = feature.name();
-            if (ENABLED_JSON_PARSER_FEATURES.contains(featureName)) {
-                factory.enable(feature);
-            } else if (DISABLED_JSON_PARSER_FEATURES.contains(featureName)) {
-                factory.disable(feature);
+            if (ENABLED_STREAM_READ_FEATURES.contains(featureName)) {
+                builder = builder.enable(feature);
+            } else if (DISABLED_STREAM_READ_FEATURES.contains(featureName)) {
+                builder = builder.disable(feature);
             }
         }
-        return factory;
+        return builder.build();
     }
 
     @Override
@@ -180,18 +174,20 @@ public final class JSONObfuscator extends Obfuscator {
 
     private void obfuscateText(Reader input, Source source, int start, int end, LimitAppendable destination) throws IOException {
         // closing parser will not close input because it's considered to be unmanaged and Feature.AUTO_CLOSE_SOURCE is disabled explicitly
-        try (ObfuscatingJsonParser parser = new ObfuscatingJsonParser(jsonFactory.createParser(input), source, start, end, destination, properties)) {
-            try {
-                while (parser.nextToken() != null && !destination.limitExceeded()) {
-                    // do nothing; the parser will take care of obfuscation
-                }
-                parser.appendRemainder();
-            } catch (JsonParseException e) {
-                LOGGER.warn(Messages.JSONObfuscator.malformedJSON.warning(), e);
-                if (malformedJSONWarning != null) {
-                    destination.append(malformedJSONWarning);
-                }
+        try (ObfuscatingJsonParser parser = new ObfuscatingJsonParser(
+                jsonFactory.createParser(ObjectReadContext.empty(), input), source, start, end, destination, properties)) {
+
+            while (parser.nextToken() != null && !destination.limitExceeded()) {
+                // do nothing; the parser will take care of obfuscation
             }
+            parser.appendRemainder();
+        } catch (StreamReadException e) {
+            LOGGER.warn(Messages.JSONObfuscator.malformedJSON.warning(), e);
+            if (malformedJSONWarning != null) {
+                destination.append(malformedJSONWarning);
+            }
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
         }
     }
 
@@ -391,7 +387,7 @@ public final class JSONObfuscator extends Obfuscator {
         Builder forArraysByDefault(ObfuscationMode obfuscationMode);
 
         /**
-         * Sets the warning to include if a {@link JsonParseException} is thrown.
+         * Sets the warning to include if a {@link StreamReadException} is thrown.
          * This can be used to override the default message. Use {@code null} to omit the warning.
          *
          * @param warning The warning to include.

@@ -19,9 +19,9 @@ package com.github.robtimus.obfuscation.jackson;
 
 import static com.github.robtimus.obfuscation.Obfuscator.fixedLength;
 import static com.github.robtimus.obfuscation.Obfuscator.none;
-import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.DISABLED_JSON_PARSER_FEATURES;
-import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.ENABLED_JSON_PARSER_FEATURES;
+import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.DISABLED_STREAM_READ_FEATURES;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.ENABLED_JSON_READ_FEATURES;
+import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.ENABLED_STREAM_READ_FEATURES;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.builder;
 import static com.github.robtimus.obfuscation.support.CaseSensitivity.CASE_SENSITIVE;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,6 +32,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -58,6 +59,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.io.output.BrokenWriter;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.LoggingEvent;
@@ -72,13 +74,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.github.robtimus.junit.support.extension.testlogger.Reload4jLoggerContext;
 import com.github.robtimus.junit.support.extension.testlogger.TestLogger;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.core.json.JsonReadFeature;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
@@ -90,44 +92,44 @@ class JSONObfuscatorTest {
     class Features {
 
         @ParameterizedTest(name = "{0}")
-        @EnumSource(JsonParser.Feature.class)
-        @DisplayName("JsonParser.Feature completeness")
-        void testJsonParserFeatureCompleteness(JsonParser.Feature feature) {
-            int enabled = ENABLED_JSON_PARSER_FEATURES.contains(feature.name()) ? 1 : 0;
-            int disabled = DISABLED_JSON_PARSER_FEATURES.contains(feature.name()) ? 1 : 0;
+        @EnumSource(StreamReadFeature.class)
+        @DisplayName("StreamReadFeature completeness")
+        void testStreamReadFeatureCompleteness(StreamReadFeature feature) {
+            int enabled = ENABLED_STREAM_READ_FEATURES.contains(feature.name()) ? 1 : 0;
+            int disabled = DISABLED_STREAM_READ_FEATURES.contains(feature.name()) ? 1 : 0;
             int deprecated = assertDoesNotThrow(() -> {
-                Field field = JsonParser.Feature.class.getDeclaredField(feature.name());
+                Field field = StreamReadFeature.class.getDeclaredField(feature.name());
                 return field.isAnnotationPresent(Deprecated.class) ? 1 : 0;
             });
-            assertEquals(1, enabled + disabled + deprecated, "Each JsonParser.Feature should either be enabled, disabled, or deprecated");
+            assertEquals(1, enabled + disabled + deprecated, "Each StreamReadFeature should either be enabled, disabled, or deprecated");
         }
 
         @ParameterizedTest(name = "{0}")
-        @MethodSource("enabledJsonParserFeatures")
-        void testEnabledJsonParserFeatureCorrectness(String featureName) {
-            assertDoesNotThrow(() -> JsonParser.Feature.valueOf(featureName));
+        @MethodSource("enabledStreamReadFeatures")
+        void testEnabledStreamReadFeatureCorrectness(String featureName) {
+            assertDoesNotThrow(() -> StreamReadFeature.valueOf(featureName));
         }
 
-        Stream<Arguments> enabledJsonParserFeatures() {
-            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures");
+        Stream<Arguments> enabledStreamReadFeatures() {
+            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedStreamReadFeatures");
             assertAll(unsupportedFeatures.stream()
-                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> JsonParser.Feature.valueOf(feature))));
-            return ENABLED_JSON_PARSER_FEATURES.stream()
+                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> StreamReadFeature.valueOf(feature))));
+            return ENABLED_STREAM_READ_FEATURES.stream()
                     .filter(feature -> !unsupportedFeatures.contains(feature))
                     .map(Arguments::arguments);
         }
 
         @ParameterizedTest(name = "{0}")
-        @MethodSource("disabledJsonParserFeatures")
-        void testDisabledJsonParserFeatureCorrectness(String featureName) {
-            assertDoesNotThrow(() -> JsonParser.Feature.valueOf(featureName));
+        @MethodSource("disabledStreamReadFeatures")
+        void testDisabledStreamReadFeatureCorrectness(String featureName) {
+            assertDoesNotThrow(() -> StreamReadFeature.valueOf(featureName));
         }
 
-        Stream<Arguments> disabledJsonParserFeatures() {
-            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedJsonParserFeatures");
+        Stream<Arguments> disabledStreamReadFeatures() {
+            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedStreamReadFeatures");
             assertAll(unsupportedFeatures.stream()
-                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> JsonParser.Feature.valueOf(feature))));
-            return DISABLED_JSON_PARSER_FEATURES.stream()
+                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> StreamReadFeature.valueOf(feature))));
+            return DISABLED_STREAM_READ_FEATURES.stream()
                     .filter(feature -> !unsupportedFeatures.contains(feature))
                     .map(Arguments::arguments);
         }
@@ -197,6 +199,23 @@ class JSONObfuscatorTest {
         Obfuscator obfuscator = createObfuscator();
         assertEquals(obfuscator.hashCode(), obfuscator.hashCode());
         assertEquals(obfuscator.hashCode(), createObfuscator().hashCode());
+    }
+
+    @Test
+    @DisplayName("broken destination")
+    void testBrokenDestination() {
+        String input = readResource("JSONObfuscator.input.valid.json");
+
+        Obfuscator obfuscator = createObfuscator();
+
+        IOException thrown = new IOException();
+
+        @SuppressWarnings("resource")
+        Writer destination = new BrokenWriter(() -> thrown);
+        Reader reader = new StringReader(input);
+
+        IOException exception = assertThrows(IOException.class, () -> obfuscator.obfuscateText(reader, destination));
+        assertSame(thrown, exception);
     }
 
     @Nested
@@ -370,7 +389,7 @@ class JSONObfuscatorTest {
             }
         }
 
-        private class TruncatedJSONTest extends ObfuscatorTest {
+        private abstract class TruncatedJSONTest extends ObfuscatorTest {
 
             TruncatedJSONTest(String expectedResource, boolean includeWarning) {
                 super("JSONObfuscator.input.truncated", expectedResource, () -> createObfuscator(includeWarning));
@@ -588,7 +607,7 @@ class JSONObfuscatorTest {
             List<String> traceMessages = loggingEvents.getAllValues().stream()
                     .filter(event -> event.getLevel() == Level.TRACE)
                     .map(LoggingEvent::getRenderedMessage)
-                    .collect(Collectors.toList());
+                    .toList();
 
             assertThat(traceMessages, hasSize(0));
         }
@@ -601,7 +620,7 @@ class JSONObfuscatorTest {
             List<String> traceMessages = loggingEvents.getAllValues().stream()
                     .filter(event -> event.getLevel() == Level.TRACE)
                     .map(LoggingEvent::getRenderedMessage)
-                    .collect(Collectors.toList());
+                    .toList();
 
             assertThat(traceMessages, hasSize(greaterThanOrEqualTo(1)));
 
@@ -609,7 +628,7 @@ class JSONObfuscatorTest {
             int expectedMax = (int) (Source.OfReader.PREFERRED_MAX_BUFFER_SIZE * 1.05D);
             List<Integer> sizes = traceMessages.stream()
                     .map(message -> extractSize(message, pattern))
-                    .collect(Collectors.toList());
+                    .toList();
             assertThat(sizes, everyItem(lessThanOrEqualTo(expectedMax)));
         }
 
