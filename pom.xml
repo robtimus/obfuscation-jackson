@@ -65,7 +65,7 @@
     <version.java>17</version.java>
 
     <version.commons-io>2.21.0</version.commons-io>
-    <version.jackson>3.0.4</version.jackson>
+    <version.jackson>3.1.0</version.jackson>
     <version.junit>6.0.2</version.junit>
     <version.junit-support>3.1</version.junit-support>
     <version.obfuscation-core>1.5</version.obfuscation-core>
