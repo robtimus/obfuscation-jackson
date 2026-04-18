@@ -65,9 +65,7 @@
     <version.java>17</version.java>
 
     <version.commons-io>2.21.0</version.commons-io>
-    <version.jackson>3.1.1</version.jackson>
-    <!-- jackson-core 3.1.0 and 3.1.1's Javadoc pages are broken; use 3.1.0-rc1 until this is fixed -->
-    <version.jackson-core-javadoc>3.1.0-rc1</version.jackson-core-javadoc>
+    <version.jackson>3.1.2</version.jackson>
     <version.junit>6.0.3</version.junit>
     <version.junit-support>3.2</version.junit-support>
     <version.obfuscation-core>1.5</version.obfuscation-core>
@@ -156,7 +154,7 @@
           <configuration>
             <links>
               <link>https://robtimus.github.io/obfuscation-core/apidocs/</link>
-              <link>https://javadoc.io/doc/tools.jackson.core/jackson-core/${version.jackson-core-javadoc}/</link>
+              <link>https://javadoc.io/doc/tools.jackson.core/jackson-core/${version.jackson}/</link>
             </links>
           </configuration>
         </plugin>
