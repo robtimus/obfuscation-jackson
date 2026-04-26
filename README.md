@@ -49,3 +49,40 @@ Obfuscator obfuscator = JSONObfuscator.builder()
         .withMalformedJSONWarning("<invalid JSON>")
         .build();
 ```
+
+## Supported Jackson versions
+
+Because Jackson 2 and 3 have different Maven coordinates and package names they can both be used in the same project.
+To prevent having to include both Jackson versions in your project just because this library uses a different version than your project, this library supports both versions. It defaults to Jackson 3, but to use Jackson 2 instead you can use one of two options:
+
+1. Exclude the Jackson 3 dependency and add a dependency for Jackson 2. `JSONObfuscator` instances will automatically start using Jackson 2 instead of Jackson 3.  
+   In your POM:
+
+    ```xml
+    <dependency>
+      <groupId>com.github.robtimus</groupId>
+      <artifactId>obfuscation-jackson</artifactId>
+      <version>...</version>
+      <exclusions>
+        <exclusion>
+          <groupId>tools.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+       </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>...</version>
+    </dependency>
+    ```
+
+2. Add a dependency for Jackson 2 as above, and explicitly specify which Jackson version to use:
+
+    ```java
+    Obfuscator obfuscator = JSONObfuscator.builder()
+            ...
+            .withJacksonVersion(JacksonVersion.JACKSON2)
+            .build();
+    ```

@@ -37,13 +37,11 @@ final class PropertyConfig {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || o.getClass() != getClass()) {
-            return false;
-        }
-        PropertyConfig other = (PropertyConfig) o;
+        return this == o
+                || o instanceof PropertyConfig other && equals(other);
+    }
+
+    private boolean equals(PropertyConfig other) {
         return obfuscator.equals(other.obfuscator)
                 && forObjects == other.forObjects
                 && forArrays == other.forArrays;

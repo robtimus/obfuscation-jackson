@@ -19,9 +19,6 @@ package com.github.robtimus.obfuscation.jackson;
 
 import static com.github.robtimus.obfuscation.Obfuscator.fixedLength;
 import static com.github.robtimus.obfuscation.Obfuscator.none;
-import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.DISABLED_STREAM_READ_FEATURES;
-import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.ENABLED_JSON_READ_FEATURES;
-import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.ENABLED_STREAM_READ_FEATURES;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.builder;
 import static com.github.robtimus.obfuscation.support.CaseSensitivity.CASE_SENSITIVE;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -29,8 +26,6 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,16 +44,15 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.io.Writer;
-import java.lang.reflect.Field;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.commons.io.input.BrokenReader;
 import org.apache.commons.io.output.BrokenWriter;
 import org.apache.log4j.Appender;
@@ -74,98 +68,17 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.mockito.ArgumentCaptor;
 import com.github.robtimus.junit.support.extension.testlogger.Reload4jLoggerContext;
 import com.github.robtimus.junit.support.extension.testlogger.TestLogger;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
-import tools.jackson.core.StreamReadFeature;
-import tools.jackson.core.json.JsonReadFeature;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
 class JSONObfuscatorTest {
-
-    @Nested
-    @DisplayName("features")
-    @TestInstance(Lifecycle.PER_CLASS)
-    class Features {
-
-        @ParameterizedTest(name = "{0}")
-        @EnumSource(StreamReadFeature.class)
-        @DisplayName("StreamReadFeature completeness")
-        void testStreamReadFeatureCompleteness(StreamReadFeature feature) {
-            int enabled = ENABLED_STREAM_READ_FEATURES.contains(feature.name()) ? 1 : 0;
-            int disabled = DISABLED_STREAM_READ_FEATURES.contains(feature.name()) ? 1 : 0;
-            int deprecated = assertDoesNotThrow(() -> {
-                Field field = StreamReadFeature.class.getDeclaredField(feature.name());
-                return field.isAnnotationPresent(Deprecated.class) ? 1 : 0;
-            });
-            assertEquals(1, enabled + disabled + deprecated, "Each StreamReadFeature should either be enabled, disabled, or deprecated");
-        }
-
-        @ParameterizedTest(name = "{0}")
-        @MethodSource("enabledStreamReadFeatures")
-        void testEnabledStreamReadFeatureCorrectness(String featureName) {
-            assertDoesNotThrow(() -> StreamReadFeature.valueOf(featureName));
-        }
-
-        Stream<Arguments> enabledStreamReadFeatures() {
-            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedStreamReadFeatures");
-            assertAll(unsupportedFeatures.stream()
-                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> StreamReadFeature.valueOf(feature))));
-            return ENABLED_STREAM_READ_FEATURES.stream()
-                    .filter(feature -> !unsupportedFeatures.contains(feature))
-                    .map(Arguments::arguments);
-        }
-
-        @ParameterizedTest(name = "{0}")
-        @MethodSource("disabledStreamReadFeatures")
-        void testDisabledStreamReadFeatureCorrectness(String featureName) {
-            assertDoesNotThrow(() -> StreamReadFeature.valueOf(featureName));
-        }
-
-        Stream<Arguments> disabledStreamReadFeatures() {
-            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedStreamReadFeatures");
-            assertAll(unsupportedFeatures.stream()
-                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> StreamReadFeature.valueOf(feature))));
-            return DISABLED_STREAM_READ_FEATURES.stream()
-                    .filter(feature -> !unsupportedFeatures.contains(feature))
-                    .map(Arguments::arguments);
-        }
-
-        @ParameterizedTest(name = "{0}")
-        @EnumSource(JsonReadFeature.class)
-        @DisplayName("JsonReadFeature completeness")
-        void testJsonReadFeatureCompleteness(JsonReadFeature feature) {
-            assertTrue(ENABLED_JSON_READ_FEATURES.contains(feature.name()), "Each JsonReadFeature should eitherbe enabled, disabled, or deprecated");
-        }
-
-        @ParameterizedTest(name = "{0}")
-        @MethodSource("enabledJsonReadFeatures")
-        void testEnabledJsonReadFeatureCorrectness(String featureName) {
-            assertDoesNotThrow(() -> JsonReadFeature.valueOf(featureName));
-        }
-
-        Stream<Arguments> enabledJsonReadFeatures() {
-            Set<String> unsupportedFeatures = readUnsupportedFeatures("com.github.robtimus.obfuscation.jackson.test.unsupportedJsonReadFeatures");
-            assertAll(unsupportedFeatures.stream()
-                    .map(feature -> () -> assertThrows(IllegalArgumentException.class, () -> JsonReadFeature.valueOf(feature))));
-            return ENABLED_JSON_READ_FEATURES.stream()
-                    .filter(feature -> !unsupportedFeatures.contains(feature))
-                    .map(Arguments::arguments);
-        }
-
-        private Set<String> readUnsupportedFeatures(String systemProperty) {
-            String featuresString = System.getProperty(systemProperty);
-            if (featuresString == null) {
-                return Collections.emptySet();
-            }
-            return Pattern.compile(",").splitAsStream(featuresString)
-                    .collect(Collectors.toSet());
-        }
-    }
 
     @ParameterizedTest(name = "{1}")
     @MethodSource
@@ -190,6 +103,7 @@ class JSONObfuscatorTest {
                         false),
                 arguments(obfuscator, builder().build(), false),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).withMalformedJSONWarning(null)), false),
+                arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).withJacksonVersion(JacksonVersion.JACKSON2)), false),
                 arguments(obfuscator, "foo", false),
         };
     }
@@ -263,7 +177,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingCaseSensitively() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all",
-                        () -> createObfuscator(builder().caseSensitiveByDefault()));
+                        () -> configureBuilder(builder().caseSensitiveByDefault()));
             }
         }
 
@@ -274,7 +188,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingCaseInsensitively() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all",
-                        () -> createObfuscatorCaseInsensitive(builder().caseInsensitiveByDefault()));
+                        () -> configureBuilderCaseInsensitive(builder().caseInsensitiveByDefault()));
             }
         }
 
@@ -284,7 +198,7 @@ class JSONObfuscatorTest {
         class ObfuscatingAll extends ObfuscatorTest {
 
             ObfuscatingAll() {
-                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all", () -> createObfuscator());
+                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all", () -> configureBuilder(builder()));
             }
         }
 
@@ -295,7 +209,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingAllOverridden() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all",
-                        () -> createObfuscatorObfuscatingAll(builder().scalarsOnlyByDefault()));
+                        () -> configureBuilderObfuscatingAll(builder().scalarsOnlyByDefault()));
             }
         }
 
@@ -306,7 +220,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingScalars() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.scalar",
-                        () -> createObfuscator(builder().scalarsOnlyByDefault()));
+                        () -> configureBuilder(builder().scalarsOnlyByDefault()));
             }
         }
 
@@ -317,7 +231,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingScalarsOverridden() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.scalar",
-                        () -> createObfuscatorObfuscatingScalarsOnly(builder().allByDefault()));
+                        () -> configureBuilderObfuscatingScalarsOnly(builder().allByDefault()));
             }
         }
 
@@ -328,7 +242,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingInherited() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.inherited",
-                        () -> createObfuscatorWithObfuscatorMode(builder(), ObfuscationMode.INHERIT));
+                        () -> configureBuilderWithObfuscatorMode(builder(), ObfuscationMode.INHERIT));
             }
         }
 
@@ -339,7 +253,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingInheritedOverridable() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.inherited-overridable",
-                        () -> createObfuscatorWithObfuscatorMode(builder(), ObfuscationMode.INHERIT_OVERRIDABLE));
+                        () -> configureBuilderWithObfuscatorMode(builder(), ObfuscationMode.INHERIT_OVERRIDABLE));
             }
         }
 
@@ -355,7 +269,7 @@ class JSONObfuscatorTest {
 
                 WithTruncatedIndicator() {
                     super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.limited.with-indicator",
-                            () -> createObfuscator(builder().limitTo(583)));
+                            () -> configureBuilder(builder().limitTo(583)));
                 }
             }
 
@@ -366,7 +280,7 @@ class JSONObfuscatorTest {
 
                 WithoutTruncatedIndicator() {
                     super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.limited.without-indicator",
-                            () -> createObfuscator(builder().limitTo(583).withTruncatedIndicator(null)));
+                            () -> configureBuilder(builder().limitTo(583).withTruncatedIndicator(null)));
                 }
             }
         }
@@ -378,7 +292,7 @@ class JSONObfuscatorTest {
     class InvalidJSON extends ObfuscatorTest {
 
         InvalidJSON() {
-            super("JSONObfuscator.input.invalid", "JSONObfuscator.expected.invalid", () -> createObfuscator());
+            super("JSONObfuscator.input.invalid", "JSONObfuscator.expected.invalid", () -> configureBuilder(builder()));
         }
     }
 
@@ -408,7 +322,7 @@ class JSONObfuscatorTest {
         private abstract class TruncatedJSONTest extends ObfuscatorTest {
 
             TruncatedJSONTest(String expectedResource, boolean includeWarning) {
-                super("JSONObfuscator.input.truncated", expectedResource, () -> createObfuscator(includeWarning));
+                super("JSONObfuscator.input.truncated", expectedResource, () -> createBuilder(includeWarning));
             }
         }
     }
@@ -419,17 +333,17 @@ class JSONObfuscatorTest {
         private final String expected;
         private final String inputWithLargeValues;
         private final String expectedWithLargeValues;
-        private final Supplier<Obfuscator> obfuscatorSupplier;
+        private final Supplier<Builder> builderSupplier;
 
         @TestLogger.ForClass(JSONObfuscator.class)
         private Reload4jLoggerContext logger;
 
         private Appender appender;
 
-        ObfuscatorTest(String inputResource, String expectedResource, Supplier<Obfuscator> obfuscatorSupplier) {
+        ObfuscatorTest(String inputResource, String expectedResource, Supplier<Builder> builderSupplier) {
             this.input = readResource(inputResource);
             this.expected = readResource(expectedResource);
-            this.obfuscatorSupplier = obfuscatorSupplier;
+            this.builderSupplier = builderSupplier;
 
             String largeValue = createLargeValue();
             inputWithLargeValues = input.replace("string\\\"int", largeValue);
@@ -446,20 +360,20 @@ class JSONObfuscatorTest {
                     .useParentAppenders(false);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("obfuscateText(CharSequence, int, int)")
-        void testObfuscateTextCharSequence() {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testObfuscateTextCharSequence(JacksonVersion jacksonVersion) {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             assertEquals(expected, obfuscator.obfuscateText("x" + input + "x", 1, 1 + input.length()).toString());
 
             assertNoTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("obfuscateText(CharSequence, int, int) with large values")
-        void testObfuscateTextCharSequenceWithLargeValues() {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testObfuscateTextCharSequenceWithLargeValues(JacksonVersion jacksonVersion) {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             assertEquals(expectedWithLargeValues,
                     obfuscator.obfuscateText("x" + inputWithLargeValues + "x", 1, 1 + inputWithLargeValues.length()).toString());
@@ -467,10 +381,10 @@ class JSONObfuscatorTest {
             assertNoTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("obfuscateText(CharSequence, int, int, Appendable)")
-        void testObfuscateTextCharSequenceToAppendable() throws IOException {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testObfuscateTextCharSequenceToAppendable(JacksonVersion jacksonVersion) throws IOException {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             StringWriter destination = spy(new StringWriter());
             obfuscator.obfuscateText("x" + input + "x", 1, 1 + input.length(), destination);
@@ -480,10 +394,10 @@ class JSONObfuscatorTest {
             assertNoTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("obfuscateText(CharSequence, int, int, Appendable) with large values")
-        void testObfuscateTextCharSequenceToAppendableWithLargeValues() throws IOException {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testObfuscateTextCharSequenceToAppendableWithLargeValues(JacksonVersion jacksonVersion) throws IOException {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             StringWriter destination = spy(new StringWriter());
             obfuscator.obfuscateText("x" + inputWithLargeValues + "x", 1, 1 + inputWithLargeValues.length(), destination);
@@ -493,11 +407,11 @@ class JSONObfuscatorTest {
             assertNoTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("obfuscateText(Reader, Appendable)")
         @SuppressWarnings("resource")
-        void testObfuscateTextReaderToAppendable() throws IOException {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testObfuscateTextReaderToAppendable(JacksonVersion jacksonVersion) throws IOException {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             StringWriter destination = spy(new StringWriter());
             Reader reader = spy(new StringReader(input));
@@ -516,11 +430,11 @@ class JSONObfuscatorTest {
             assertNoTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("obfuscateText(Reader, Appendable) with large values")
         @SuppressWarnings("resource")
-        void testObfuscateTextReaderToAppendableWithLargeValues() throws IOException {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testObfuscateTextReaderToAppendableWithLargeValues(JacksonVersion jacksonVersion) throws IOException {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             StringWriter destination = spy(new StringWriter());
             Reader reader = spy(new StringReader(inputWithLargeValues));
@@ -539,13 +453,13 @@ class JSONObfuscatorTest {
             assertTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("obfuscateText(Reader, Appendable) with large values - logging disabled")
         @SuppressWarnings("resource")
-        void testObfuscateTextReaderToAppendableWithLargeValuesLoggingDisabled() throws IOException {
+        void testObfuscateTextReaderToAppendableWithLargeValuesLoggingDisabled(JacksonVersion jacksonVersion) throws IOException {
             logger.setLevel(Level.DEBUG);
 
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             StringWriter destination = spy(new StringWriter());
             Reader reader = spy(new StringReader(inputWithLargeValues));
@@ -564,10 +478,10 @@ class JSONObfuscatorTest {
             assertNoTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("streamTo(Appendable)")
-        void testStreamTo() throws IOException {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testStreamTo(JacksonVersion jacksonVersion) throws IOException {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             StringWriter writer = spy(new StringWriter());
             try (Writer w = obfuscator.streamTo(writer)) {
@@ -584,10 +498,10 @@ class JSONObfuscatorTest {
             assertNoTruncationLogging(appender);
         }
 
-        @Test
+        @JacksonVersionTest
         @DisplayName("streamTo(Appendable) with large values")
-        void testStreamToWithLargeValues() throws IOException {
-            Obfuscator obfuscator = obfuscatorSupplier.get();
+        void testStreamToWithLargeValues(JacksonVersion jacksonVersion) throws IOException {
+            Obfuscator obfuscator = createObfuscator(jacksonVersion);
 
             StringWriter writer = spy(new StringWriter());
             try (Writer w = obfuscator.streamTo(writer)) {
@@ -603,6 +517,14 @@ class JSONObfuscatorTest {
 
             // streamTo caches the entire results, then obfuscate the cached contents as a CharSequence
             assertNoTruncationLogging(appender);
+        }
+
+        private Obfuscator createObfuscator(JacksonVersion jacksonVersion) {
+            Builder builder = builderSupplier.get();
+            if (jacksonVersion != null) {
+                builder = builder.withJacksonVersion(jacksonVersion);
+            }
+            return builder.build();
         }
 
         private String createLargeValue() {
@@ -653,22 +575,36 @@ class JSONObfuscatorTest {
             assertTrue(matcher.find());
             return Integer.parseInt(matcher.group(1));
         }
+
+        @Retention(RetentionPolicy.RUNTIME)
+        @Target(ElementType.METHOD)
+        @ParameterizedTest(name = "Jackson version = {0}")
+        @EnumSource(JacksonVersion.class)
+        @NullSource
+        @interface JacksonVersionTest {
+            // No content necessary
+        }
     }
 
     private static Obfuscator createObfuscator() {
-        return builder()
-                .transform(JSONObfuscatorTest::createObfuscator);
+        return createObfuscator(builder());
     }
 
-    private static Obfuscator createObfuscator(boolean includeWarning) {
+    private static Obfuscator createObfuscator(Builder builder) {
+        return builder
+                .transform(JSONObfuscatorTest::configureBuilder)
+                .build();
+    }
+
+    private static Builder createBuilder(boolean includeWarning) {
         Builder builder = builder();
         if (!includeWarning) {
             builder = builder.withMalformedJSONWarning(null);
         }
-        return builder.transform(JSONObfuscatorTest::createObfuscator);
+        return builder.transform(JSONObfuscatorTest::configureBuilder);
     }
 
-    private static Obfuscator createObfuscator(Builder builder) {
+    private static Builder configureBuilder(Builder builder) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
                 .withProperty("string", obfuscator)
@@ -679,11 +615,10 @@ class JSONObfuscatorTest {
                 .withProperty("object", fixedLength(3, 'o'))
                 .withProperty("array", fixedLength(3, 'a'))
                 .withProperty("null", obfuscator)
-                .withProperty("notObfuscated", none())
-                .build();
+                .withProperty("notObfuscated", none());
     }
 
-    private static Obfuscator createObfuscatorCaseInsensitive(Builder builder) {
+    private static Builder configureBuilderCaseInsensitive(Builder builder) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
                 .withProperty("STRING", obfuscator)
@@ -694,11 +629,10 @@ class JSONObfuscatorTest {
                 .withProperty("OBJECT", fixedLength(3, 'o'))
                 .withProperty("ARRAY", fixedLength(3, 'a'))
                 .withProperty("NULL", obfuscator)
-                .withProperty("NOTOBFUSCATED", none())
-                .build();
+                .withProperty("NOTOBFUSCATED", none());
     }
 
-    private static Obfuscator createObfuscatorObfuscatingAll(Builder builder) {
+    private static Builder configureBuilderObfuscatingAll(Builder builder) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
                 .withProperty("string", obfuscator).all()
@@ -709,11 +643,10 @@ class JSONObfuscatorTest {
                 .withProperty("object", fixedLength(3, 'o')).all()
                 .withProperty("array", fixedLength(3, 'a')).all()
                 .withProperty("null", obfuscator).all()
-                .withProperty("notObfuscated", none()).all()
-                .build();
+                .withProperty("notObfuscated", none()).all();
     }
 
-    private static Obfuscator createObfuscatorObfuscatingScalarsOnly(Builder builder) {
+    private static Builder configureBuilderObfuscatingScalarsOnly(Builder builder) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
                 .withProperty("string", obfuscator).scalarsOnly()
@@ -724,11 +657,10 @@ class JSONObfuscatorTest {
                 .withProperty("object", fixedLength(3, 'o')).scalarsOnly()
                 .withProperty("array", fixedLength(3, 'a')).scalarsOnly()
                 .withProperty("null", obfuscator).scalarsOnly()
-                .withProperty("notObfuscated", none()).scalarsOnly()
-                .build();
+                .withProperty("notObfuscated", none()).scalarsOnly();
     }
 
-    private static Obfuscator createObfuscatorWithObfuscatorMode(Builder builder, ObfuscationMode obfuscationMode) {
+    private static Builder configureBuilderWithObfuscatorMode(Builder builder, ObfuscationMode obfuscationMode) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
                 .forObjectsByDefault(obfuscationMode)
@@ -741,8 +673,7 @@ class JSONObfuscatorTest {
                 .withProperty("object", fixedLength(3, 'o'))
                 .withProperty("array", fixedLength(3, 'a'))
                 .withProperty("null", obfuscator)
-                .withProperty("notObfuscated", none())
-                .build();
+                .withProperty("notObfuscated", none());
     }
 
     private static String readResource(String name) {

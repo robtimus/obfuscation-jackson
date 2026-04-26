@@ -20,7 +20,8 @@
  */
 module com.github.robtimus.obfuscation.jackson {
     requires transitive com.github.robtimus.obfuscation;
-    requires tools.jackson.core;
+    requires static tools.jackson.core;
+    requires static com.fasterxml.jackson.core;
     requires org.slf4j;
 
     exports com.github.robtimus.obfuscation.jackson;

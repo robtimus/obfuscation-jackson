@@ -24,11 +24,11 @@ import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.counting;
 import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.UncheckedIOException;
 import java.io.Writer;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,80 +39,29 @@ import com.github.robtimus.obfuscation.support.CaseSensitivity;
 import com.github.robtimus.obfuscation.support.CountingReader;
 import com.github.robtimus.obfuscation.support.LimitAppendable;
 import com.github.robtimus.obfuscation.support.MapBuilder;
-import tools.jackson.core.ObjectReadContext;
-import tools.jackson.core.StreamReadFeature;
-import tools.jackson.core.exc.JacksonIOException;
 import tools.jackson.core.exc.StreamReadException;
-import tools.jackson.core.json.JsonFactory;
-import tools.jackson.core.json.JsonFactoryBuilder;
-import tools.jackson.core.json.JsonReadFeature;
 
 /**
  * An obfuscator that obfuscates JSON properties in {@link CharSequence CharSequences} or the contents of {@link Reader Readers}.
+ * <p>
+ * This class supports both Jackson 2 and Jackson 3, depending on the available runtime dependencies. It prefers Jackson 3 if both are available.
+ * An explicit version can be defined using {@link Builder#withJacksonVersion(JacksonVersion)}.
  *
  * @author Rob Spoor
  */
-public final class JSONObfuscator extends Obfuscator {
+public abstract class JSONObfuscator extends Obfuscator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(JSONObfuscator.class);
+    static final Logger LOGGER = LoggerFactory.getLogger(JSONObfuscator.class);
 
-    // Note: the following are declared as Set<String> for backwards compatibility with older Jackson versions
-    // They are verified through unit tests for correctness and completeness
+    final Map<String, PropertyConfig> properties;
 
-    // Allow most non-deprecated features, to be as lenient as possible
-    @SuppressWarnings("nls")
-    static final Set<String> ENABLED_STREAM_READ_FEATURES = Set.of(
-            "IGNORE_UNDEFINED",
-            "CLEAR_CURRENT_TOKEN_ON_CLOSE"
-    );
+    final String malformedJSONWarning;
 
-    // Disable explicitly
-    @SuppressWarnings("nls")
-    static final Set<String> DISABLED_STREAM_READ_FEATURES = Set.of(
-            // the source is not ours to close
-            "AUTO_CLOSE_SOURCE",
-            // don't fail if there are duplicates, to be as lenient as possible
-            "STRICT_DUPLICATE_DETECTION",
-            // the source is not unnecessary
-            "INCLUDE_SOURCE_IN_LOCATION",
-            // use Double.parseDouble
-            "USE_FAST_DOUBLE_PARSER",
-            // Use built-in parsing for BigDecimal and BigInteger
-            "USE_FAST_BIG_NUMBER_PARSER"
-    );
+    final long limit;
+    final String truncatedIndicator;
 
-    // Allow all features, to be as lenient as possible
-    @SuppressWarnings("nls")
-    static final Set<String> ENABLED_JSON_READ_FEATURES = Set.of(
-            "ALLOW_JAVA_COMMENTS",
-            "ALLOW_YAML_COMMENTS",
-            "ALLOW_SINGLE_QUOTES",
-            "ALLOW_UNQUOTED_PROPERTY_NAMES",
-            "ALLOW_UNESCAPED_CONTROL_CHARS",
-            "ALLOW_RS_CONTROL_CHAR",
-            "ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER",
-            "ALLOW_LEADING_ZEROS_FOR_NUMBERS",
-            "ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS",
-            "ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS",
-            "ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS",
-            "ALLOW_NON_NUMERIC_NUMBERS",
-            "ALLOW_MISSING_VALUES",
-            "ALLOW_TRAILING_COMMA"
-    );
-
-    private final Map<String, PropertyConfig> properties;
-
-    private final JsonFactory jsonFactory;
-
-    private final String malformedJSONWarning;
-
-    private final long limit;
-    private final String truncatedIndicator;
-
-    private JSONObfuscator(ObfuscatorBuilder builder) {
+    JSONObfuscator(ObfuscatorBuilder builder) {
         properties = builder.properties();
-
-        jsonFactory = createJsonFactory();
 
         malformedJSONWarning = builder.malformedJSONWarning;
 
@@ -120,27 +69,8 @@ public final class JSONObfuscator extends Obfuscator {
         truncatedIndicator = builder.truncatedIndicator;
     }
 
-    private static JsonFactory createJsonFactory() {
-        JsonFactoryBuilder builder = new JsonFactoryBuilder();
-        for (JsonReadFeature feature : JsonReadFeature.values()) {
-            String featureName = feature.name();
-            if (ENABLED_JSON_READ_FEATURES.contains(featureName)) {
-                builder = builder.enable(feature);
-            }
-        }
-        for (StreamReadFeature feature : StreamReadFeature.values()) {
-            String featureName = feature.name();
-            if (ENABLED_STREAM_READ_FEATURES.contains(featureName)) {
-                builder = builder.enable(feature);
-            } else if (DISABLED_STREAM_READ_FEATURES.contains(featureName)) {
-                builder = builder.disable(feature);
-            }
-        }
-        return builder.build();
-    }
-
     @Override
-    public CharSequence obfuscateText(CharSequence s, int start, int end) {
+    public final CharSequence obfuscateText(CharSequence s, int start, int end) {
         checkStartAndEnd(s, start, end);
         StringBuilder sb = new StringBuilder(end - start);
         obfuscateText(s, start, end, sb);
@@ -148,7 +78,7 @@ public final class JSONObfuscator extends Obfuscator {
     }
 
     @Override
-    public void obfuscateText(CharSequence s, int start, int end, Appendable destination) throws IOException {
+    public final void obfuscateText(CharSequence s, int start, int end, Appendable destination) throws IOException {
         checkStartAndEnd(s, start, end);
         @SuppressWarnings("resource")
         Reader reader = reader(s, start, end);
@@ -160,7 +90,7 @@ public final class JSONObfuscator extends Obfuscator {
     }
 
     @Override
-    public void obfuscateText(Reader input, Appendable destination) throws IOException {
+    public final void obfuscateText(Reader input, Appendable destination) throws IOException {
         @SuppressWarnings("resource")
         CountingReader countingReader = counting(input);
         Source.OfReader source = new Source.OfReader(countingReader, LOGGER);
@@ -173,34 +103,15 @@ public final class JSONObfuscator extends Obfuscator {
         }
     }
 
-    private void obfuscateText(Reader input, Source source, int start, int end, LimitAppendable destination) throws IOException {
-        // closing parser will not close input because it's considered to be unmanaged and Feature.AUTO_CLOSE_SOURCE is disabled explicitly
-        try (ObfuscatingJsonParser parser = new ObfuscatingJsonParser(
-                jsonFactory.createParser(ObjectReadContext.empty(), input), source, start, end, destination, properties)) {
-
-            while (parser.nextToken() != null && !destination.limitExceeded()) {
-                // do nothing; the parser will take care of obfuscation
-            }
-            parser.appendRemainder();
-        } catch (StreamReadException e) {
-            LOGGER.warn(Messages.JSONObfuscator.malformedJSON.warning(), e);
-            if (malformedJSONWarning != null) {
-                destination.append(malformedJSONWarning);
-            }
-        } catch (UncheckedIOException e) {
-            throw e.getCause();
-        } catch (JacksonIOException e) { // NOSONAR; combining the two catch clauses makes e.getCause() return Throwable instead of IOException
-            throw e.getCause();
-        }
-    }
+    abstract void obfuscateText(Reader input, Source source, int start, int end, LimitAppendable destination) throws IOException;
 
     @Override
-    public Writer streamTo(Appendable destination) {
+    public final Writer streamTo(Appendable destination) {
         return new CachingObfuscatingWriter(this, destination);
     }
 
     @Override
-    public boolean equals(Object o) {
+    public final boolean equals(Object o) {
         if (this == o) {
             return true;
         }
@@ -215,20 +126,23 @@ public final class JSONObfuscator extends Obfuscator {
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         return properties.hashCode() ^ Objects.hashCode(malformedJSONWarning) ^ Long.hashCode(limit) ^ Objects.hashCode(truncatedIndicator);
     }
 
     @Override
     @SuppressWarnings("nls")
-    public String toString() {
-        return getClass().getName()
+    public final String toString() {
+        return JSONObfuscator.class.getName()
                 + "[properties=" + properties
                 + ",malformedJSONWarning=" + malformedJSONWarning
                 + ",limit=" + limit
                 + ",truncatedIndicator=" + truncatedIndicator
+                + ",jacksonVersion=" + jacksonVersion()
                 + "]";
     }
+
+    abstract JacksonVersion jacksonVersion();
 
     /**
      * Returns a builder that will create {@code JSONObfuscators}.
@@ -399,6 +313,18 @@ public final class JSONObfuscator extends Obfuscator {
         Builder withMalformedJSONWarning(String warning);
 
         /**
+         * Sets the Jackson version to use. This method should only be called if more than one Jackson version is available.
+         * <p>
+         * If a version is set that is not {@linkplain JacksonVersion#isAvailable() available}, calling {@link #build()} will fail.
+         *
+         * @param jacksonVersion The Jackson version to use.
+         * @return This object.
+         * @throws NullPointerException If the given Jackson version is {@code null}.
+         * @since 2.0
+         */
+        Builder withJacksonVersion(JacksonVersion jacksonVersion);
+
+        /**
          * Sets the limit for the obfuscated result.
          *
          * @param limit The limit to use.
@@ -562,7 +488,7 @@ public final class JSONObfuscator extends Obfuscator {
         LimitConfigurer withTruncatedIndicator(String pattern);
     }
 
-    private static final class ObfuscatorBuilder implements PropertyConfigurer, LimitConfigurer {
+    static final class ObfuscatorBuilder implements PropertyConfigurer, LimitConfigurer {
 
         private final MapBuilder<PropertyConfig> properties;
 
@@ -570,6 +496,8 @@ public final class JSONObfuscator extends Obfuscator {
 
         private long limit;
         private String truncatedIndicator;
+
+        private JacksonVersion jacksonVersion;
 
         // default settings
         private ObfuscationMode forObjectsByDefault;
@@ -667,6 +595,12 @@ public final class JSONObfuscator extends Obfuscator {
         }
 
         @Override
+        public Builder withJacksonVersion(JacksonVersion jacksonVersion) {
+            this.jacksonVersion = Objects.requireNonNull(jacksonVersion);
+            return this;
+        }
+
+        @Override
         public LimitConfigurer limitTo(long limit) {
             if (limit < 0) {
                 throw new IllegalArgumentException(limit + " < 0"); //$NON-NLS-1$
@@ -706,7 +640,20 @@ public final class JSONObfuscator extends Obfuscator {
         public JSONObfuscator build() {
             addLastProperty();
 
-            return new JSONObfuscator(this);
+            return switch (determineJacksonVersion()) {
+                case JACKSON2 -> new Jackson2Obfuscator(this);
+                case JACKSON3 -> new Jackson3Obfuscator(this);
+            };
+        }
+
+        private JacksonVersion determineJacksonVersion() {
+            if (jacksonVersion != null) {
+                return jacksonVersion;
+            }
+            return Arrays.stream(JacksonVersion.values())
+                    .filter(JacksonVersion::isAvailable)
+                    .max(Comparator.naturalOrder())
+                    .orElseThrow();
         }
     }
 }
