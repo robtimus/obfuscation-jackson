@@ -1,6 +1,7 @@
 {
   "string": "string\"int",
   "int": 123456,
+  "bigInt": 123456789012345678901234567890,
   "float": 1234.56,
   "booleanTrue": true,
   "booleanFalse": false,
@@ -8,6 +9,7 @@
   "object": {
     "string": "string\"int",
     "int": 123456,
+    "bigInt": 123456789012345678901234567890,
     "float": 1234.56,
     "booleanTrue": true,
     "booleanFalse": false,
@@ -20,6 +22,7 @@
   "array": [ [ "1", "2" ], {} ],
   "notMatchedString": "123456",
   "notMatchedInt": 123456,
+  "notMatchedBigInt": 123456789012345678901234567890,
   "notMatchedFloat": 1234.56,
   "notMatchedBooleanTrue": true,
   "notMatchedBooleanFalse": false,
@@ -27,6 +30,7 @@
   "nonMatchedObject": {
     "notMatchedString": "123456",
     "notMatchedInt": 123456,
+    "notMatchedBigInt": 123456789012345678901234567890,
     "notMatchedFloat": 1234.56,
     "notMatchedBooleanTrue": true,
     "notMatchedBooleanFalse": false,
@@ -35,6 +39,7 @@
   "nested": [ {
     "string": "string\"int",
     "int": 123456,
+    "bigInt": 123456789012345678901234567890,
     "float": 1234.56,
     "booleanTrue": true,
     "booleanFalse": false,

@@ -1,6 +1,7 @@
 {
   "string": "***",
   "int": ***,
+  "bigInt": ***,
   "float": ***,
   "booleanTrue": ***,
   "booleanFalse": ***,
@@ -9,6 +10,7 @@
   "array": aaa,
   "notMatchedString": "123456",
   "notMatchedInt": 123456,
+  "notMatchedBigInt": 123456789012345678901234567890,
   "notMatchedFloat": 1234.56,
   "notMatchedBooleanTrue": true,
   "notMatchedBooleanFalse": false,
@@ -16,10 +18,6 @@
   "nonMatchedObject": {
     "notMatchedString": "123456",
     "notMatchedInt": 123456,
+    "notMatchedBigInt": 123456789012345678901234567890,
     "notMatchedFloat": 1234.56,
-    "notMatchedBooleanTrue": true,
-    "notMatchedBooleanFalse": false,
-    "nonMatchedNull": null
-  },
-  "nested": [ {
-    "string": "**
+    "notMa

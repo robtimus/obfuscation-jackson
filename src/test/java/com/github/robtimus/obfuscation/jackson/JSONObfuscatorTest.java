@@ -609,6 +609,7 @@ class JSONObfuscatorTest {
         return builder
                 .withProperty("string", obfuscator)
                 .withProperty("int", obfuscator)
+                .withProperty("bigInt", obfuscator)
                 .withProperty("float", obfuscator)
                 .withProperty("booleanTrue", obfuscator)
                 .withProperty("booleanFalse", obfuscator)
@@ -623,6 +624,7 @@ class JSONObfuscatorTest {
         return builder
                 .withProperty("STRING", obfuscator)
                 .withProperty("INT", obfuscator)
+                .withProperty("BIGINT", obfuscator)
                 .withProperty("FLOAT", obfuscator)
                 .withProperty("BOOLEANTRUE", obfuscator)
                 .withProperty("BOOLEANFALSE", obfuscator)
@@ -637,6 +639,7 @@ class JSONObfuscatorTest {
         return builder
                 .withProperty("string", obfuscator).all()
                 .withProperty("int", obfuscator).all()
+                .withProperty("bigInt", obfuscator).all()
                 .withProperty("float", obfuscator).all()
                 .withProperty("booleanTrue", obfuscator).all()
                 .withProperty("booleanFalse", obfuscator).all()
@@ -651,6 +654,7 @@ class JSONObfuscatorTest {
         return builder
                 .withProperty("string", obfuscator).scalarsOnly()
                 .withProperty("int", obfuscator).scalarsOnly()
+                .withProperty("bigInt", obfuscator).scalarsOnly()
                 .withProperty("float", obfuscator).scalarsOnly()
                 .withProperty("booleanTrue", obfuscator).scalarsOnly()
                 .withProperty("booleanFalse", obfuscator).scalarsOnly()
@@ -667,6 +671,7 @@ class JSONObfuscatorTest {
                 .forArraysByDefault(obfuscationMode)
                 .withProperty("string", obfuscator)
                 .withProperty("int", obfuscator)
+                .withProperty("bigInt", obfuscator)
                 .withProperty("float", obfuscator)
                 .withProperty("booleanTrue", obfuscator)
                 .withProperty("booleanFalse", obfuscator)
