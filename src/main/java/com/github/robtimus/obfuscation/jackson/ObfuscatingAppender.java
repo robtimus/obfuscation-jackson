@@ -1,0 +1,293 @@
+/*
+ * ObfuscatingAppender.java
+ * Copyright 2026 Rob Spoor
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.github.robtimus.obfuscation.jackson;
+
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
+import java.util.function.Function;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+
+abstract class ObfuscatingAppender<T> {
+
+    private final Source source;
+    private final Appendable destination;
+
+    private final Map<String, PropertyConfig> properties;
+
+    private final int textOffset;
+    private final int textEnd;
+    private int textIndex;
+
+    private String tokenValue;
+    private int tokenStart;
+    private int tokenEnd;
+
+    private final Deque<ObfuscatedProperty<T>> currentProperties = new ArrayDeque<>();
+
+    ObfuscatingAppender(Source source, int start, int end, Appendable destination, Map<String, PropertyConfig> properties) {
+        this.source = source;
+        this.textOffset = start;
+        this.textEnd = end;
+        this.textIndex = start;
+        this.destination = destination;
+        this.properties = properties;
+    }
+
+    abstract T startObjectToken();
+
+    abstract T endObjectToken();
+
+    abstract T startArrayToken();
+
+    abstract T endArrayToken();
+
+    abstract T propertyNameToken();
+
+    abstract String tokenToString(T token);
+
+    abstract String currentPropertyName() throws IOException;
+
+    abstract String currentValue() throws IOException;
+
+    abstract int currentTokenLocation();
+
+    abstract int currentLocation();
+
+    void startObject() throws IOException {
+        startStructure(startObjectToken(), p -> p.forObjects);
+    }
+
+    void endObject() throws IOException {
+        endStructure(startObjectToken(), endObjectToken());
+    }
+
+    void startArray() throws IOException {
+        startStructure(startArrayToken(), p -> p.forArrays);
+    }
+
+    void endArray() throws IOException {
+        endStructure(startArrayToken(), endArrayToken());
+    }
+
+    private void startStructure(T startToken, Function<PropertyConfig, ObfuscationMode> getObfuscationMode) throws IOException {
+        ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
+        if (currentProperty != null) {
+            if (currentProperty.depth == 0) {
+                // The start of the structure that's being obfuscated
+                ObfuscationMode obfuscationMode = getObfuscationMode.apply(currentProperty.config);
+                if (obfuscationMode == ObfuscationMode.EXCLUDE) {
+                    // There is an obfuscator for the structure property, but the obfuscation mode prohibits handling it, so discard the property
+                    currentProperties.removeLast();
+                } else {
+                    updateOtherTokenFields(startToken);
+                    appendUntilToken();
+
+                    currentProperty.structure = startToken;
+                    currentProperty.obfuscationMode = obfuscationMode;
+                    currentProperty.depth++;
+                }
+            } else if (currentProperty.structure == startToken) {
+                // In a nested structure that's being obfuscated; do nothing
+                currentProperty.depth++;
+            }
+            // else in a nested structure that's being obfuscated; do nothing
+        }
+        // else not obfuscating anything
+    }
+
+    private void endStructure(T startToken, T endToken) throws IOException {
+        ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.structure == startToken) {
+            currentProperty.depth--;
+            if (currentProperty.depth == 0) {
+                if (currentProperty.obfuscateStructure()) {
+                    int originalTokenStart = tokenStart;
+                    updateOtherTokenFields(endToken);
+                    obfuscateUntilToken(currentProperty, originalTokenStart);
+                }
+                // else the obfuscator is Obfuscator.none(), which means we don't need to obfuscate,
+                // or the structure itself should not be obfuscated
+
+                currentProperties.removeLast();
+            }
+            // else still in a nested structure array that's being obfuscated
+        }
+        // else currently no structure is being obfuscated
+    }
+
+    void propertyName() throws IOException {
+        ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
+        if (currentProperty == null || currentProperty.allowsOverriding()) {
+            PropertyConfig config = properties.get(currentPropertyName());
+            if (config != null) {
+                currentProperty = new ObfuscatedProperty<>(config);
+                currentProperties.addLast(currentProperty);
+            }
+
+            if (source.needsTruncating()) {
+                updateOtherTokenFields(propertyNameToken());
+                appendUntilToken();
+                source.truncate();
+            }
+        } else if (!currentProperty.config.performObfuscation && source.needsTruncating()) {
+            // in a nested object or array that's being obfuscated using Obfuscator.none(), which means we can just append data already
+            updateOtherTokenFields(propertyNameToken());
+            appendUntilToken();
+            source.truncate();
+        }
+        // else in a nested object or array that's being obfuscated; do nothing
+    }
+
+    void valueString() throws IOException {
+        ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.obfuscateScalar()) {
+            updateStringTokenFields();
+            appendUntilToken();
+            obfuscateCurrentToken(currentProperty);
+
+            if (currentProperty.depth == 0) {
+                currentProperties.removeLast();
+            }
+        }
+        // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
+    }
+
+    void valueNumber() throws IOException {
+        ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.obfuscateScalar()) {
+            updateNumberTokenFields();
+            appendUntilToken();
+            obfuscateCurrentToken(currentProperty);
+
+            if (currentProperty.depth == 0) {
+                currentProperties.removeLast();
+            }
+        }
+        // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
+    }
+
+    void valueOther(T token) throws IOException {
+        ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
+        if (currentProperty != null && currentProperty.obfuscateScalar()) {
+            updateOtherTokenFields(token);
+            appendUntilToken();
+            obfuscateCurrentToken(currentProperty);
+
+            if (currentProperty.depth == 0) {
+                currentProperties.removeLast();
+            }
+        }
+        // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
+    }
+
+    private void updateStringTokenFields() throws IOException {
+        tokenValue = currentValue();
+        tokenStart = stringValueStart();
+        tokenEnd = stringValueEnd();
+    }
+
+    private void updateNumberTokenFields() throws IOException {
+        tokenValue = currentValue();
+        tokenStart = tokenStart();
+        tokenEnd = tokenEnd();
+    }
+
+    private void updateOtherTokenFields(T token) {
+        tokenValue = tokenToString(token);
+        tokenStart = tokenStart();
+        tokenEnd = tokenEnd();
+    }
+
+    private int tokenStart() {
+        return textOffset + currentTokenLocation();
+    }
+
+    private int tokenEnd() {
+        return textOffset + currentLocation();
+    }
+
+    private int stringValueStart() {
+        int start = tokenStart();
+        // start points to the opening ", skip past it
+        if (source.charAt(start) == '"') {
+            start++;
+        }
+        return start;
+    }
+
+    private int stringValueEnd() {
+        int end = tokenEnd();
+        // end points to the closing ", skip back past it
+        if (source.charAt(end - 1) == '"') {
+            end--;
+        }
+        return end;
+    }
+
+    private void appendUntilToken() throws IOException {
+        source.appendTo(textIndex, tokenStart, destination);
+        textIndex = tokenStart;
+    }
+
+    private void obfuscateUntilToken(ObfuscatedProperty<T> currentProperty, int originalTokenStart) throws IOException {
+        source.obfuscateText(originalTokenStart, tokenEnd, currentProperty.config.obfuscator, destination);
+        textIndex = tokenEnd;
+    }
+
+    private void obfuscateCurrentToken(ObfuscatedProperty<T> currentProperty) throws IOException {
+        currentProperty.config.obfuscator.obfuscateText(tokenValue, destination);
+        textIndex = tokenEnd;
+    }
+
+    void appendRemainder() throws IOException {
+        textIndex = source.appendRemainder(textIndex, textEnd, destination);
+    }
+
+    private static final class ObfuscatedProperty<T> {
+
+        private final PropertyConfig config;
+        private T structure;
+        private ObfuscationMode obfuscationMode;
+        private int depth = 0;
+
+        private ObfuscatedProperty(PropertyConfig config) {
+            this.config = config;
+        }
+
+        private boolean allowsOverriding() {
+            // OBFUSCATE and INHERITED do not allow overriding
+            // No need to include EXCLUDE; if that occurs the ObfuscatedProperty is discarded
+            return obfuscationMode == ObfuscationMode.INHERIT_OVERRIDABLE;
+        }
+
+        private boolean obfuscateStructure() {
+            // Don't obfuscate the entire structure if Obfuscator.none() is used
+            return config.performObfuscation && obfuscationMode == ObfuscationMode.OBFUSCATE;
+        }
+
+        private boolean obfuscateScalar() {
+            // Don't obfuscate the scalar if Obfuscator.none() is used
+            // Obfuscate if depth == 0 (the property is for the scalar itself),
+            // or if the obfuscation mode is INHERITED or INHERITED_OVERRIDABLE (EXCLUDE is discarded)
+            return config.performObfuscation
+                    && (depth == 0 || obfuscationMode != ObfuscationMode.OBFUSCATE);
+        }
+    }
+}
