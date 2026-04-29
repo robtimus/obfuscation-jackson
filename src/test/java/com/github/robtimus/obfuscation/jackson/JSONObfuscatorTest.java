@@ -111,15 +111,15 @@ class JSONObfuscatorTest {
     @Test
     @DisplayName("hashCode()")
     void testHashCode() {
-        Obfuscator obfuscator = createObfuscator();
+        Obfuscator obfuscator = createObfuscator(builder());
         assertEquals(obfuscator.hashCode(), obfuscator.hashCode());
-        assertEquals(obfuscator.hashCode(), createObfuscator().hashCode());
+        assertEquals(obfuscator.hashCode(), createObfuscator(builder()).hashCode());
     }
 
-    @Test
+    @JacksonVersionTest
     @DisplayName("broken source")
-    void testBrokenSource() {
-        Obfuscator obfuscator = createObfuscator();
+    void testBrokenSource(JacksonVersion jacksonVersion) {
+        Obfuscator obfuscator = createObfuscator(configureBuilder(builder(), jacksonVersion));
 
         IOException thrown = new IOException();
 
@@ -131,12 +131,12 @@ class JSONObfuscatorTest {
         assertSame(thrown, exception);
     }
 
-    @Test
+    @JacksonVersionTest
     @DisplayName("broken destination")
-    void testBrokenDestination() {
+    void testBrokenDestination(JacksonVersion jacksonVersion) {
         String input = readResource("JSONObfuscator.input.valid.json");
 
-        Obfuscator obfuscator = createObfuscator();
+        Obfuscator obfuscator = createObfuscator(configureBuilder(builder(), jacksonVersion));
 
         IOException thrown = new IOException();
 
@@ -521,10 +521,7 @@ class JSONObfuscatorTest {
 
         private Obfuscator createObfuscator(JacksonVersion jacksonVersion) {
             Builder builder = builderSupplier.get();
-            if (jacksonVersion != null) {
-                builder = builder.withJacksonVersion(jacksonVersion);
-            }
-            return builder.build();
+            return configureBuilder(builder, jacksonVersion).build();
         }
 
         private String createLargeValue() {
@@ -575,19 +572,6 @@ class JSONObfuscatorTest {
             assertTrue(matcher.find());
             return Integer.parseInt(matcher.group(1));
         }
-
-        @Retention(RetentionPolicy.RUNTIME)
-        @Target(ElementType.METHOD)
-        @ParameterizedTest(name = "Jackson version = {0}")
-        @EnumSource(JacksonVersion.class)
-        @NullSource
-        @interface JacksonVersionTest {
-            // No content necessary
-        }
-    }
-
-    private static Obfuscator createObfuscator() {
-        return createObfuscator(builder());
     }
 
     private static Obfuscator createObfuscator(Builder builder) {
@@ -681,6 +665,12 @@ class JSONObfuscatorTest {
                 .withProperty("notObfuscated", none());
     }
 
+    private static Builder configureBuilder(Builder builder, JacksonVersion jacksonVersion) {
+        return jacksonVersion != null
+                ? builder.withJacksonVersion(jacksonVersion)
+                : builder;
+    }
+
     private static String readResource(String name) {
         StringBuilder sb = new StringBuilder();
         try (Reader input = new InputStreamReader(JSONObfuscatorTest.class.getResourceAsStream(name), StandardCharsets.UTF_8)) {
@@ -693,5 +683,14 @@ class JSONObfuscatorTest {
             throw new UncheckedIOException(e);
         }
         return sb.toString().replace("\r", "");
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @ParameterizedTest(name = "Jackson version = {0}")
+    @EnumSource(JacksonVersion.class)
+    @NullSource
+    @interface JacksonVersionTest {
+        // No content necessary
     }
 }
