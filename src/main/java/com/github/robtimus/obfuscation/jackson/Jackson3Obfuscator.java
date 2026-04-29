@@ -22,8 +22,6 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.github.robtimus.obfuscation.support.LimitAppendable;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
@@ -37,8 +35,6 @@ import tools.jackson.core.json.JsonReadFeature;
 
 @SuppressWarnings("squid:S2160")
 final class Jackson3Obfuscator extends JSONObfuscator {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(Jackson3Obfuscator.class);
 
     // Note: the following are declared as Set<String> for backwards compatibility with older Jackson versions
     // They are verified through unit tests for correctness and completeness
