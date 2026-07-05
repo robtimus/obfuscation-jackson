@@ -74,6 +74,7 @@ final class Jackson3Obfuscator extends JSONObfuscator {
             "ALLOW_LEADING_ZEROS_FOR_NUMBERS",
             "ALLOW_LEADING_PLUS_SIGN_FOR_NUMBERS",
             "ALLOW_LEADING_DECIMAL_POINT_FOR_NUMBERS",
+            "ALLOW_HEXADECIMAL_NUMBERS",
             "ALLOW_TRAILING_DECIMAL_POINT_FOR_NUMBERS",
             "ALLOW_NON_NUMERIC_NUMBERS",
             "ALLOW_MISSING_VALUES",

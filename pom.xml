@@ -64,10 +64,12 @@
   <properties>
     <version.java>17</version.java>
 
-    <version.commons-io>2.21.0</version.commons-io>
-    <version.jackson2>2.21.2</version.jackson2>
-    <version.jackson3>3.1.2</version.jackson3>
-    <version.junit>6.0.3</version.junit>
+    <version.commons-io>2.22.0</version.commons-io>
+    <version.jackson2>2.22.0</version.jackson2>
+    <version.jackson3>3.2.0</version.jackson3>
+    <!-- the first non-broken version of jackson-core 3 with working Javadoc is 3.1.2 -->
+    <version.jackson3.javadoc>3.1.2</version.jackson3.javadoc>
+    <version.junit>6.1.1</version.junit>
     <version.junit-support>3.2</version.junit-support>
     <version.obfuscation-core>1.5</version.obfuscation-core>
     <version.pioneer>2.3.0</version.pioneer>
@@ -163,7 +165,7 @@
             <links>
               <link>https://robtimus.github.io/obfuscation-core/apidocs/</link>
               <link>https://javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/${version.jackson2}/</link>
-              <link>https://javadoc.io/doc/tools.jackson.core/jackson-core/${version.jackson3}/</link>
+              <link>https://javadoc.io/doc/tools.jackson.core/jackson-core/${version.jackson3.javadoc}/</link>
             </links>
           </configuration>
         </plugin>
@@ -323,7 +325,8 @@
                 <!--The following were added in Jackson 2.19 and 2.20 -->
                 -Dcom.github.robtimus.obfuscation.jackson.test.jackson2.unsupportedJsonReadFeatures=ALLOW_RS_CONTROL_CHAR
                 -Dcom.github.robtimus.obfuscation.jackson.test.jackson2.unsupportedStreamReadFeatures=CLEAR_CURRENT_TOKEN_ON_CLOSE
-                -Dcom.github.robtimus.obfuscation.jackson.test.jackson3.unsupportedJsonReadFeatures=
+                <!-- The following was added in Jackson 3.2.0 -->
+                -Dcom.github.robtimus.obfuscation.jackson.test.jackson3.unsupportedJsonReadFeatures=ALLOW_HEXADECIMAL_NUMBERS
                 -Dcom.github.robtimus.obfuscation.jackson.test.jackson3.unsupportedStreamReadFeatures=
               </argLine>
             </configuration>

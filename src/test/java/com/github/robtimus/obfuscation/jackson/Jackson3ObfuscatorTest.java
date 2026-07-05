@@ -98,7 +98,7 @@ class Jackson3ObfuscatorTest {
         @DisplayName("JsonReadFeature completeness")
         void testJsonReadFeatureCompleteness(JsonReadFeature feature) {
             assertTrue(ENABLED_JSON_READ_FEATURES.contains(feature.name()),
-                    "Each JsonReadFeature should eitherbe enabled, disabled, or deprecated");
+                    "Each JsonReadFeature should either be enabled, disabled, or deprecated");
         }
 
         @ParameterizedTest(name = "{0}")
