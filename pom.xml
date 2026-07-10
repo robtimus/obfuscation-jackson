@@ -65,7 +65,7 @@
     <version.java>17</version.java>
 
     <version.commons-io>2.22.0</version.commons-io>
-    <version.jackson2>2.22.0</version.jackson2>
+    <version.jackson2>2.22.1</version.jackson2>
     <version.jackson3>3.2.0</version.jackson3>
     <!-- the first non-broken version of jackson-core 3 with working Javadoc is 3.1.2 -->
     <version.jackson3.javadoc>3.1.2</version.jackson3.javadoc>
