@@ -66,10 +66,8 @@
 
     <version.commons-io>2.22.0</version.commons-io>
     <version.jackson2>2.22.1</version.jackson2>
-    <version.jackson3>3.2.0</version.jackson3>
-    <!-- the first non-broken version of jackson-core 3 with working Javadoc is 3.1.2 -->
-    <version.jackson3.javadoc>3.1.2</version.jackson3.javadoc>
-    <version.junit>6.1.1</version.junit>
+    <version.jackson3>3.2.1</version.jackson3>
+    <version.junit>6.1.2</version.junit>
     <version.junit-support>3.2</version.junit-support>
     <version.obfuscation-core>1.5</version.obfuscation-core>
     <version.pioneer>2.3.0</version.pioneer>
@@ -165,7 +163,7 @@
             <links>
               <link>https://robtimus.github.io/obfuscation-core/apidocs/</link>
               <link>https://javadoc.io/doc/com.fasterxml.jackson.core/jackson-core/${version.jackson2}/</link>
-              <link>https://javadoc.io/doc/tools.jackson.core/jackson-core/${version.jackson3.javadoc}/</link>
+              <link>https://javadoc.io/doc/tools.jackson.core/jackson-core/${version.jackson3}/</link>
             </links>
           </configuration>
         </plugin>
