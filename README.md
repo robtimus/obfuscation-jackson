@@ -73,7 +73,7 @@ To prevent having to include both Jackson versions in your project just because 
 
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
+      <artifactId>jackson-core</artifactId>
       <version>...</version>
     </dependency>
     ```
