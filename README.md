@@ -20,20 +20,18 @@ By default, a JSON obfuscator will obfuscate all properties; for object and arra
 
 ```java
 Obfuscator obfuscator = JSONObfuscator.builder()
-        .scalarsOnlyByDefault()
-        // .scalarsOnlyByDefault() is equivalent to:
-        // .forObjectsByDefault(ObfuscationMode.EXCLUDE)
-        // .forArraysByDefault(ObfuscationMode.EXCLUDE)
+        .withValueTypesByDefault(ValueType.SCALAR, ValueType.NULL)
         .withProperty("password", Obfuscator.fixedLength(3))
-        .withProperty("complex", Obfuscator.fixedLength(3))
-                .forObjects(ObfuscationMode.OBFUSCATE) // override the default setting
-        .withProperty("arrayOfComplex", Obfuscator.fixedLength(3))
-                .forArrays(ObfuscationMode.INHERIT_OVERRIDABLE) // override the default setting
+        .withProperty("complex", Obfuscator.fixedLength(3), property -> property
+                .withValueTypes(ValueType.OBJECT)     // override the default setting
+                .forObjects(ObfuscationMode.INHERIT)) // override the default setting
+        .withProperty("arrayOfComplex", Obfuscator.fixedLength(3), property -> property
+                .withValueTypes(ValueType.ARRAY)                 // override the default setting
+                .forArrays(ObfuscationMode.INHERIT_OVERRIDABLE)) // override the default setting
         .build();
 ```
 
-The four possible modes for both objects and arrays are:
-* `EXCLUDE`: don't obfuscate nested objects or arrays, but instead traverse into them.
+The three possible modes for both objects and arrays are:
 * `OBFUSCATE`: obfuscate nested objects and arrays completely (default).
 * `INHERIT`: don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties.
 * `INHERIT_OVERRIDABLE`: don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties. If a nested property has its own obfuscator defined this will be used instead.
