@@ -19,17 +19,19 @@ package com.github.robtimus.obfuscation.jackson;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.Map;
 import java.util.function.Function;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ValueType;
 
 abstract class ObfuscatingAppender<T> {
 
     private final Source source;
     private final Appendable destination;
 
-    private final Map<String, PropertyConfig> properties;
+    private final Map<ValueType, Map<String, PropertyConfig>> properties;
 
     private final int textOffset;
     private final int textEnd;
@@ -39,9 +41,17 @@ abstract class ObfuscatingAppender<T> {
     private int tokenStart;
     private int tokenEnd;
 
+    /*
+     * To perform obfuscator lookups based not just on property names but also value types, the lookup needs to be delayed to when a new value is
+     * encountered. This should only be done directly after a property name. If it is done for every value then it will also be done for array
+     * elements. This flag is set to true only from propertyName(), and reset to false after performing a lookup.
+     */
+    private boolean needsObfuscatorLookup;
+    private String currentPropertyName;
+
     private final Deque<ObfuscatedProperty<T>> currentProperties = new ArrayDeque<>();
 
-    ObfuscatingAppender(Source source, int start, int end, Appendable destination, Map<String, PropertyConfig> properties) {
+    ObfuscatingAppender(Source source, int start, int end, Appendable destination, Map<ValueType, Map<String, PropertyConfig>> properties) {
         this.source = source;
         this.textOffset = start;
         this.textEnd = end;
@@ -71,7 +81,7 @@ abstract class ObfuscatingAppender<T> {
     abstract int currentLocation();
 
     void startObject() throws IOException {
-        startStructure(startObjectToken(), p -> p.forObjects);
+        startStructure(startObjectToken(), ValueType.OBJECT, p -> p.forObjects);
     }
 
     void endObject() throws IOException {
@@ -79,30 +89,26 @@ abstract class ObfuscatingAppender<T> {
     }
 
     void startArray() throws IOException {
-        startStructure(startArrayToken(), p -> p.forArrays);
+        startStructure(startArrayToken(), ValueType.ARRAY, p -> p.forArrays);
     }
 
     void endArray() throws IOException {
         endStructure(startArrayToken(), endArrayToken());
     }
 
-    private void startStructure(T startToken, Function<PropertyConfig, ObfuscationMode> getObfuscationMode) throws IOException {
+    private void startStructure(T startToken, ValueType valueType, Function<PropertyConfig, ObfuscationMode> getObfuscationMode) throws IOException {
+        lookupConfigIfNeeded(valueType);
         ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
         if (currentProperty != null) {
             if (currentProperty.depth == 0) {
                 // The start of the structure that's being obfuscated
                 ObfuscationMode obfuscationMode = getObfuscationMode.apply(currentProperty.config);
-                if (obfuscationMode == ObfuscationMode.EXCLUDE) {
-                    // There is an obfuscator for the structure property, but the obfuscation mode prohibits handling it, so discard the property
-                    currentProperties.removeLast();
-                } else {
-                    updateOtherTokenFields(startToken);
-                    appendUntilToken();
+                updateOtherTokenFields(startToken);
+                appendUntilToken();
 
-                    currentProperty.structure = startToken;
-                    currentProperty.obfuscationMode = obfuscationMode;
-                    currentProperty.depth++;
-                }
+                currentProperty.structure = startToken;
+                currentProperty.obfuscationMode = obfuscationMode;
+                currentProperty.depth++;
             } else if (currentProperty.structure == startToken) {
                 // In a nested structure that's being obfuscated; do nothing
                 currentProperty.depth++;
@@ -135,12 +141,8 @@ abstract class ObfuscatingAppender<T> {
     void propertyName() throws IOException {
         ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
         if (currentProperty == null || currentProperty.allowsOverriding()) {
-            PropertyConfig config = properties.get(currentPropertyName());
-            if (config != null) {
-                currentProperty = new ObfuscatedProperty<>(config);
-                currentProperties.addLast(currentProperty);
-            }
-
+            needsObfuscatorLookup = true;
+            currentPropertyName = currentPropertyName();
             if (source.needsTruncating()) {
                 updateOtherTokenFields(propertyNameToken());
                 appendUntilToken();
@@ -156,6 +158,7 @@ abstract class ObfuscatingAppender<T> {
     }
 
     void valueString() throws IOException {
+        lookupConfigIfNeeded(ValueType.STRING);
         ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
         if (currentProperty != null && currentProperty.obfuscateScalar()) {
             updateStringTokenFields();
@@ -170,6 +173,7 @@ abstract class ObfuscatingAppender<T> {
     }
 
     void valueNumber() throws IOException {
+        lookupConfigIfNeeded(ValueType.NUMBER);
         ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
         if (currentProperty != null && currentProperty.obfuscateScalar()) {
             updateNumberTokenFields();
@@ -183,7 +187,16 @@ abstract class ObfuscatingAppender<T> {
         // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
     }
 
-    void valueOther(T token) throws IOException {
+    void valueBoolean(T token) throws IOException {
+        valueOther(token, ValueType.BOOLEAN);
+    }
+
+    void valueNull(T token) throws IOException {
+        valueOther(token, ValueType.NULL);
+    }
+
+    private void valueOther(T token, ValueType valueType) throws IOException {
+        lookupConfigIfNeeded(valueType);
         ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
         if (currentProperty != null && currentProperty.obfuscateScalar()) {
             updateOtherTokenFields(token);
@@ -195,6 +208,17 @@ abstract class ObfuscatingAppender<T> {
             }
         }
         // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
+    }
+
+    private void lookupConfigIfNeeded(ValueType valueType) {
+        if (needsObfuscatorLookup) {
+            PropertyConfig config = properties.getOrDefault(valueType, Collections.emptyMap()).get(currentPropertyName);
+            if (config != null) {
+                ObfuscatedProperty<T> currentProperty = new ObfuscatedProperty<>(config);
+                currentProperties.addLast(currentProperty);
+            }
+            needsObfuscatorLookup = false;
+        }
     }
 
     private void updateStringTokenFields() throws IOException {
@@ -273,7 +297,6 @@ abstract class ObfuscatingAppender<T> {
 
         private boolean allowsOverriding() {
             // OBFUSCATE and INHERITED do not allow overriding
-            // No need to include EXCLUDE; if that occurs the ObfuscatedProperty is discarded
             return obfuscationMode == ObfuscationMode.INHERIT_OVERRIDABLE;
         }
 
@@ -285,7 +308,7 @@ abstract class ObfuscatingAppender<T> {
         private boolean obfuscateScalar() {
             // Don't obfuscate the scalar if Obfuscator.none() is used
             // Obfuscate if depth == 0 (the property is for the scalar itself),
-            // or if the obfuscation mode is INHERITED or INHERITED_OVERRIDABLE (EXCLUDE is discarded)
+            // or if the obfuscation mode is INHERITED or INHERITED_OVERRIDABLE
             return config.performObfuscation
                     && (depth == 0 || obfuscationMode != ObfuscationMode.OBFUSCATE);
         }

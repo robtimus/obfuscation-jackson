@@ -83,7 +83,7 @@ final class Jackson3Obfuscator extends JSONObfuscator {
 
     private final JsonFactory jsonFactory;
 
-    Jackson3Obfuscator(ObfuscatorBuilder builder) {
+    Jackson3Obfuscator(Builder builder) {
         super(builder);
 
         jsonFactory = createJsonFactory();
@@ -124,7 +124,8 @@ final class Jackson3Obfuscator extends JSONObfuscator {
                     case PROPERTY_NAME -> appender.propertyName();
                     case VALUE_STRING -> appender.valueString();
                     case VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT -> appender.valueNumber();
-                    case VALUE_TRUE, VALUE_FALSE, VALUE_NULL -> appender.valueOther(token);
+                    case VALUE_TRUE, VALUE_FALSE -> appender.valueBoolean(token);
+                    case VALUE_NULL -> appender.valueNull(token);
                     default -> {
                         // do nothing
                     }
@@ -152,7 +153,9 @@ final class Jackson3Obfuscator extends JSONObfuscator {
 
         private final JsonParser jsonParser;
 
-        private Appender(JsonParser jsonParser, Source source, int start, int end, Appendable destination, Map<String, PropertyConfig> properties) {
+        private Appender(JsonParser jsonParser, Source source, int start, int end, Appendable destination,
+                         Map<ValueType, Map<String, PropertyConfig>> properties) {
+
             super(source, start, end, destination, properties);
 
             this.jsonParser = jsonParser;

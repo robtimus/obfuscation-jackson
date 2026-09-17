@@ -20,7 +20,6 @@ package com.github.robtimus.obfuscation.jackson;
 import static com.github.robtimus.obfuscation.Obfuscator.fixedLength;
 import static com.github.robtimus.obfuscation.Obfuscator.none;
 import static com.github.robtimus.obfuscation.jackson.JSONObfuscator.builder;
-import static com.github.robtimus.obfuscation.support.CaseSensitivity.CASE_SENSITIVE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -50,6 +49,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -74,7 +74,9 @@ import com.github.robtimus.junit.support.extension.testlogger.Reload4jLoggerCont
 import com.github.robtimus.junit.support.extension.testlogger.TestLogger;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ValueType;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
@@ -93,13 +95,15 @@ class JSONObfuscatorTest {
                 arguments(obfuscator, obfuscator, true),
                 arguments(obfuscator, null, false),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none())), true),
-                arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), CASE_SENSITIVE)), true),
+                arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), p -> p.caseSensitive())), true),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", fixedLength(3))), false),
-                arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).excludeObjects()), false),
-                arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).excludeArrays()), false),
+                arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), p -> p.withValueTypes(ValueType.SCALAR))), false),
+                arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), p -> p.forObjects(ObfuscationMode.INHERIT))), false),
+                arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), p -> p.forArrays(ObfuscationMode.INHERIT))), false),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).limitTo(Long.MAX_VALUE)), true),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).limitTo(1024)), false),
-                arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).limitTo(Long.MAX_VALUE).withTruncatedIndicator(null)),
+                arguments(obfuscator,
+                        createObfuscator(builder().withProperty("test", none()).limitTo(Long.MAX_VALUE, l -> l.withTruncatedIndicator(null))),
                         false),
                 arguments(obfuscator, builder().build(), false),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none()).withMalformedJSONWarning(null)), false),
@@ -153,6 +157,29 @@ class JSONObfuscatorTest {
     class BuilderTest {
 
         @Nested
+        @DisplayName("withProperty")
+        class WithProperty {
+
+            @Test
+            @DisplayName("duplicate property with exact match")
+            void testDuplicatePropertyWithExactMatch() {
+                Obfuscator obfuscator = Obfuscator.all();
+                Builder builder = builder().withProperty("property", obfuscator);
+                assertThrows(IllegalArgumentException.class, () -> builder.withProperty("property", obfuscator));
+            }
+
+            @Test
+            @DisplayName("duplicate property with some overlap")
+            void testDuplicatePropertyWithSomeOverlap() {
+                Obfuscator obfuscator = Obfuscator.all();
+                Builder builder = builder()
+                        .withValueTypesByDefault(ValueType.STRING, ValueType.NULL)
+                        .withProperty("property", obfuscator, property -> property.withValueTypes(ValueType.SCALAR));
+                assertThrows(IllegalArgumentException.class, () -> builder.withProperty("property", obfuscator));
+            }
+        }
+
+        @Nested
         @DisplayName("limitTo")
         class LimitTo {
 
@@ -193,6 +220,17 @@ class JSONObfuscatorTest {
         }
 
         @Nested
+        @DisplayName("caseInsensitive(), overriding caseSensitiveByDefault()")
+        @TestInstance(Lifecycle.PER_CLASS)
+        class ObfuscatingCaseSensitivelyOverridden extends ObfuscatorTest {
+
+            ObfuscatingCaseSensitivelyOverridden() {
+                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all",
+                        () -> configureBuilderCaseInsensitive(builder().caseSensitiveByDefault(), PropertyConfigurer::caseInsensitive));
+            }
+        }
+
+        @Nested
         @DisplayName("obfuscating all (default)")
         @TestInstance(Lifecycle.PER_CLASS)
         class ObfuscatingAll extends ObfuscatorTest {
@@ -209,7 +247,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingAllOverridden() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all",
-                        () -> configureBuilderObfuscatingAll(builder().scalarsOnlyByDefault()));
+                        () -> configureBuilderObfuscatingAll(builder().withValueTypesByDefault(ValueType.SCALAR, ValueType.NULL)));
             }
         }
 
@@ -220,7 +258,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingScalars() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.scalar",
-                        () -> configureBuilder(builder().scalarsOnlyByDefault()));
+                        () -> configureBuilder(builder().withValueTypesByDefault(ValueType.SCALAR, ValueType.NULL)));
             }
         }
 
@@ -231,7 +269,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingScalarsOverridden() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.scalar",
-                        () -> configureBuilderObfuscatingScalarsOnly(builder().allByDefault()));
+                        () -> configureBuilderObfuscatingScalarsOnly(builder().withValueTypesByDefault(ValueType.ALL)));
             }
         }
 
@@ -280,7 +318,7 @@ class JSONObfuscatorTest {
 
                 WithoutTruncatedIndicator() {
                     super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.limited.without-indicator",
-                            () -> configureBuilder(builder().limitTo(583).withTruncatedIndicator(null)));
+                            () -> configureBuilder(builder().limitTo(583, limit -> limit.withTruncatedIndicator(null))));
                 }
             }
         }
@@ -319,10 +357,54 @@ class JSONObfuscatorTest {
             }
         }
 
-        private abstract class TruncatedJSONTest extends ObfuscatorTest {
+        private abstract static class TruncatedJSONTest extends ObfuscatorTest {
 
             TruncatedJSONTest(String expectedResource, boolean includeWarning) {
                 super("JSONObfuscator.input.truncated", expectedResource, () -> createBuilder(includeWarning));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("different obfuscators per type")
+    @TestInstance(Lifecycle.PER_CLASS)
+    class DifferentObfuscatorsPerType {
+
+        @Nested
+        @DisplayName("separate obfuscators")
+        class SeparateObfuscators extends ObfuscatorTest {
+
+            SeparateObfuscators() {
+                super("JSONObfuscator.input.values.json", "JSONObfuscator.expected.values.separate", () -> builder()
+                        .withProperty("value", Obfuscator.fixedValue("<string>"), property -> property.withValueTypes(ValueType.STRING))
+                        .withProperty("value", Obfuscator.fixedValue("<number>"), property -> property.withValueTypes(ValueType.NUMBER))
+                        .withProperty("value", Obfuscator.fixedValue("<boolean>"), property -> property.withValueTypes(ValueType.BOOLEAN))
+                        .withProperty("value", Obfuscator.fixedValue("<object>"), property -> property.withValueTypes(ValueType.OBJECT))
+                        .withProperty("value", Obfuscator.fixedValue("<array>"), property -> property.withValueTypes(ValueType.ARRAY))
+                        .withProperty("value", Obfuscator.fixedValue("<null>"), property -> property.withValueTypes(ValueType.NULL)));
+            }
+        }
+
+        @Nested
+        @DisplayName("using scalar")
+        class UsingScalar extends ObfuscatorTest {
+
+            UsingScalar() {
+                super("JSONObfuscator.input.values.json", "JSONObfuscator.expected.values.scalar", () -> builder()
+                        .withProperty("value", Obfuscator.fixedValue("<scalar>"), property -> property.withValueTypes(ValueType.SCALAR))
+                        .withProperty("value", Obfuscator.fixedValue("<object>"), property -> property.withValueTypes(ValueType.OBJECT))
+                        .withProperty("value", Obfuscator.fixedValue("<array>"), property -> property.withValueTypes(ValueType.ARRAY))
+                        .withProperty("value", Obfuscator.fixedValue("<null>"), property -> property.withValueTypes(ValueType.NULL)));
+            }
+        }
+
+        @Nested
+        @DisplayName("non-null")
+        class NonNull extends ObfuscatorTest {
+
+            NonNull() {
+                super("JSONObfuscator.input.values.json", "JSONObfuscator.expected.values.non-null", () -> builder()
+                        .withProperty("value", Obfuscator.fixedValue("<non-null>"), property -> property.withValueTypes(ValueType.NON_NULL)));
             }
         }
     }
@@ -604,48 +686,52 @@ class JSONObfuscatorTest {
     }
 
     private static Builder configureBuilderCaseInsensitive(Builder builder) {
+        return configureBuilderCaseInsensitive(builder, property -> { /* do nothing */ });
+    }
+
+    private static Builder configureBuilderCaseInsensitive(Builder builder, Consumer<PropertyConfigurer> configurer) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
-                .withProperty("STRING", obfuscator)
-                .withProperty("INT", obfuscator)
-                .withProperty("BIGINT", obfuscator)
-                .withProperty("FLOAT", obfuscator)
-                .withProperty("BOOLEANTRUE", obfuscator)
-                .withProperty("BOOLEANFALSE", obfuscator)
-                .withProperty("OBJECT", fixedLength(3, 'o'))
-                .withProperty("ARRAY", fixedLength(3, 'a'))
-                .withProperty("NULL", obfuscator)
-                .withProperty("NOTOBFUSCATED", none());
+                .withProperty("STRING", obfuscator, configurer)
+                .withProperty("INT", obfuscator, configurer)
+                .withProperty("BIGINT", obfuscator, configurer)
+                .withProperty("FLOAT", obfuscator, configurer)
+                .withProperty("BOOLEANTRUE", obfuscator, configurer)
+                .withProperty("BOOLEANFALSE", obfuscator, configurer)
+                .withProperty("OBJECT", fixedLength(3, 'o'), configurer)
+                .withProperty("ARRAY", fixedLength(3, 'a'), configurer)
+                .withProperty("NULL", obfuscator, configurer)
+                .withProperty("NOTOBFUSCATED", none(), configurer);
     }
 
     private static Builder configureBuilderObfuscatingAll(Builder builder) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
-                .withProperty("string", obfuscator).all()
-                .withProperty("int", obfuscator).all()
-                .withProperty("bigInt", obfuscator).all()
-                .withProperty("float", obfuscator).all()
-                .withProperty("booleanTrue", obfuscator).all()
-                .withProperty("booleanFalse", obfuscator).all()
-                .withProperty("object", fixedLength(3, 'o')).all()
-                .withProperty("array", fixedLength(3, 'a')).all()
-                .withProperty("null", obfuscator).all()
-                .withProperty("notObfuscated", none()).all();
+                .withProperty("string", obfuscator, property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("int", obfuscator, property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("bigInt", obfuscator, property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("float", obfuscator, property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("booleanTrue", obfuscator, property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("booleanFalse", obfuscator, property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("object", fixedLength(3, 'o'), property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("array", fixedLength(3, 'a'), property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("null", obfuscator, property -> property.withValueTypes(ValueType.ALL))
+                .withProperty("notObfuscated", none(), property -> property.withValueTypes(ValueType.ALL));
     }
 
     private static Builder configureBuilderObfuscatingScalarsOnly(Builder builder) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
-                .withProperty("string", obfuscator).scalarsOnly()
-                .withProperty("int", obfuscator).scalarsOnly()
-                .withProperty("bigInt", obfuscator).scalarsOnly()
-                .withProperty("float", obfuscator).scalarsOnly()
-                .withProperty("booleanTrue", obfuscator).scalarsOnly()
-                .withProperty("booleanFalse", obfuscator).scalarsOnly()
-                .withProperty("object", fixedLength(3, 'o')).scalarsOnly()
-                .withProperty("array", fixedLength(3, 'a')).scalarsOnly()
-                .withProperty("null", obfuscator).scalarsOnly()
-                .withProperty("notObfuscated", none()).scalarsOnly();
+                .withProperty("string", obfuscator, property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("int", obfuscator, property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("bigInt", obfuscator, property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("float", obfuscator, property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("booleanTrue", obfuscator, property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("booleanFalse", obfuscator, property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("object", fixedLength(3, 'o'), property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("array", fixedLength(3, 'a'), property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("null", obfuscator, property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL))
+                .withProperty("notObfuscated", none(), property -> property.withValueTypes(ValueType.SCALAR, ValueType.NULL));
     }
 
     private static Builder configureBuilderWithObfuscatorMode(Builder builder, ObfuscationMode obfuscationMode) {

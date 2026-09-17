@@ -1,0 +1,38 @@
+[
+  {
+    "type": "string",
+    "value": "<non-null>"
+  },
+  {
+    "type": "int",
+    "value": <non-null>
+  },
+  {
+    "type": "bigInt",
+    "value": <non-null>
+  },
+  {
+    "type": "float",
+    "value": <non-null>
+  },
+  {
+    "type": "booleanTrue",
+    "value": <non-null>
+  },
+  {
+    "type": "booleanFalse",
+    "value": <non-null>
+  },
+  {
+    "type": "null",
+    "value": null
+  },
+  {
+    "type": "object",
+    "value": <non-null>
+  },
+  {
+    "type": "array",
+    "value": <non-null>
+  }
+]

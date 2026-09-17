@@ -1,0 +1,38 @@
+[
+  {
+    "type": "string",
+    "value": "<scalar>"
+  },
+  {
+    "type": "int",
+    "value": <scalar>
+  },
+  {
+    "type": "bigInt",
+    "value": <scalar>
+  },
+  {
+    "type": "float",
+    "value": <scalar>
+  },
+  {
+    "type": "booleanTrue",
+    "value": <scalar>
+  },
+  {
+    "type": "booleanFalse",
+    "value": <scalar>
+  },
+  {
+    "type": "null",
+    "value": <null>
+  },
+  {
+    "type": "object",
+    "value": <object>
+  },
+  {
+    "type": "array",
+    "value": <array>
+  }
+]
