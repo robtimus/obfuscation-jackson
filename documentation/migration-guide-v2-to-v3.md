@@ -1,6 +1,6 @@
 # Migrating from version 2.x to 3.0
 
-## Builder
+## JSONObfuscator.Builder
 
 `JSONObfuscator.Builder` is no longer an interface but instead a final class. If you are creating mocks or implementing it directly you need to use actual instances created through `JSONObfucsator.builder()`.
 
@@ -23,7 +23,7 @@ JSONObfuscator.builder()
 
 #### Case sensitivity
 
-`JSONObfuscator.withProperty` no longer accepts a `CaseSensitivity` argument. You need to use new `PropertyConfigurer` methods `caseSensitive()` and `caseInsensitive()` instead. For example:
+`JSONObfuscator.Builder.withProperty` no longer accepts a `CaseSensitivity` argument. You need to use new `PropertyConfigurer` methods `caseSensitive()` and `caseInsensitive()` instead. For example:
 
 ```java
 /* old:
@@ -140,7 +140,7 @@ JSONObfuscator.builder()
                 .withTruncatedIndicator("<truncated>"))
 ```
 
-## PropertyConfigurer
+## JSONObfuscator.PropertyConfigurer
 
 `JSONObfuscator.PropertyConfigurer` is no longer an interface but instead a final class. If you are creating mocks or implementing it directly you need to use actual instances passed to the `Consumer` argument of `JSONObfuscator.Builder.withProperty`.
 
@@ -249,13 +249,13 @@ JSONObfuscator.builder()
                 .forArrays(ObfuscationMode.OBFUSCATE))
 ```
 
-## LimitConfigurer
+## JSONObfuscator.LimitConfigurer
 
 `JSONObfuscator.LimitConfigurer` is no longer an interface but instead a final class. If you are creating mocks or implementing it directly you need to use actual instances passed to the `Consumer` argument of `JSONObfuscator.Builder.limitTo`.
 
-## ObfuscationMode
+## JSONObfuscator.ObfuscationMode
 
-Class `ObfuscationMode` is no longer nested in `PropertyConfigurer` but directly in `JSONObfuscator`. You need to replace any occurrence of `JSONObfuscator.PropertyConfigurer.ObfuscationMode` to `JSONObfuscator.ObfuscationMode` in import statements, method arguments, etc.
+`ObfuscationMode` is no longer nested in `PropertyConfigurer` but directly in `JSONObfuscator`. You need to replace any occurrence of `JSONObfuscator.PropertyConfigurer.ObfuscationMode` to `JSONObfuscator.ObfuscationMode` in import statements, method arguments, etc.
 
 ### EXCLUDE
 
