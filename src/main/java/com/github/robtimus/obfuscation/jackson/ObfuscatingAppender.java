@@ -23,8 +23,8 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Map;
 import java.util.function.Function;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ObfuscationMode;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ValueType;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
 
 abstract class ObfuscatingAppender<T> {
 
@@ -81,7 +81,7 @@ abstract class ObfuscatingAppender<T> {
     abstract int currentLocation();
 
     void startObject() throws IOException {
-        startStructure(startObjectToken(), ValueType.OBJECT, p -> p.forObjects);
+        startStructure(startObjectToken(), ValueType.OBJECT, PropertyConfig::forObjects);
     }
 
     void endObject() throws IOException {
@@ -89,7 +89,7 @@ abstract class ObfuscatingAppender<T> {
     }
 
     void startArray() throws IOException {
-        startStructure(startArrayToken(), ValueType.ARRAY, p -> p.forArrays);
+        startStructure(startArrayToken(), ValueType.ARRAY, PropertyConfig::forArrays);
     }
 
     void endArray() throws IOException {
@@ -148,7 +148,7 @@ abstract class ObfuscatingAppender<T> {
                 appendUntilToken();
                 source.truncate();
             }
-        } else if (!currentProperty.config.performObfuscation && source.needsTruncating()) {
+        } else if (!currentProperty.config.performObfuscation() && source.needsTruncating()) {
             // in a nested object or array that's being obfuscated using Obfuscator.none(), which means we can just append data already
             updateOtherTokenFields(propertyNameToken());
             appendUntilToken();
@@ -271,12 +271,12 @@ abstract class ObfuscatingAppender<T> {
     }
 
     private void obfuscateUntilToken(ObfuscatedProperty<T> currentProperty, int originalTokenStart) throws IOException {
-        source.obfuscateText(originalTokenStart, tokenEnd, currentProperty.config.obfuscator, destination);
+        source.obfuscateText(originalTokenStart, tokenEnd, currentProperty.config.obfuscator(), destination);
         textIndex = tokenEnd;
     }
 
     private void obfuscateCurrentToken(ObfuscatedProperty<T> currentProperty) throws IOException {
-        currentProperty.config.obfuscator.obfuscateText(tokenValue, destination);
+        currentProperty.config.obfuscator().obfuscateText(tokenValue, destination);
         textIndex = tokenEnd;
     }
 
@@ -302,14 +302,14 @@ abstract class ObfuscatingAppender<T> {
 
         private boolean obfuscateStructure() {
             // Don't obfuscate the entire structure if Obfuscator.none() is used
-            return config.performObfuscation && obfuscationMode == ObfuscationMode.OBFUSCATE;
+            return config.performObfuscation() && obfuscationMode == ObfuscationMode.OBFUSCATE;
         }
 
         private boolean obfuscateScalar() {
             // Don't obfuscate the scalar if Obfuscator.none() is used
             // Obfuscate if depth == 0 (the property is for the scalar itself),
             // or if the obfuscation mode is INHERITED or INHERITED_OVERRIDABLE
-            return config.performObfuscation
+            return config.performObfuscation()
                     && (depth == 0 || obfuscationMode != ObfuscationMode.OBFUSCATE);
         }
     }

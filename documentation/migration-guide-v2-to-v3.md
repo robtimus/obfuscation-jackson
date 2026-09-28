@@ -255,8 +255,6 @@ JSONObfuscator.builder()
 
 ## JSONObfuscator.ObfuscationMode
 
-`ObfuscationMode` is no longer nested in `PropertyConfigurer` but directly in `JSONObfuscator`. You need to replace any occurrence of `JSONObfuscator.PropertyConfigurer.ObfuscationMode` to `JSONObfuscator.ObfuscationMode` in import statements, method arguments, etc.
-
 ### EXCLUDE
 
 Constant `ObfuscationMode.EXCLUDE` has been removed. You need to use new method `withValueTypesByDefault` and/or `withValueTypes` as documented above instead. For example:

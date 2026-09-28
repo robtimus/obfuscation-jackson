@@ -74,9 +74,9 @@ import com.github.robtimus.junit.support.extension.testlogger.Reload4jLoggerCont
 import com.github.robtimus.junit.support.extension.testlogger.TestLogger;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ObfuscationMode;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ValueType;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)

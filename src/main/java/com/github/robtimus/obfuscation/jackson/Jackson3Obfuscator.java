@@ -22,6 +22,7 @@ import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.Set;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
 import com.github.robtimus.obfuscation.support.LimitAppendable;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;

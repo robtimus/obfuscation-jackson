@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.robtimus.obfuscation.Obfuscator;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
 import com.github.robtimus.obfuscation.support.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.support.CaseSensitivity;
 import com.github.robtimus.obfuscation.support.CountingReader;
@@ -574,6 +576,94 @@ public abstract class JSONObfuscator extends Obfuscator {
             forObjects = null;
             forArrays = null;
         }
+
+        /**
+         * The possible value types.
+         *
+         * @author Rob Spoor
+         * @since 3.0
+         */
+        public enum ValueType {
+            /**
+             * Represents string values.
+             */
+            STRING,
+            /**
+             * Represent numeric values.
+             */
+            NUMBER,
+            /**
+             * Represents boolean values.
+             */
+            BOOLEAN,
+            /**
+             * Represents object values.
+             */
+            OBJECT,
+            /**
+             * Represents array values.
+             */
+            ARRAY,
+            /**
+             * Represents {@code null} values.
+             */
+            NULL,
+            /**
+             * Represents scalar values: strings, numbers and booleans.
+             * This is an alias for combining {@link #STRING}, {@link #NUMBER} and {@link #BOOLEAN}.
+             */
+            SCALAR,
+            /**
+             * Represents all possible values.
+             * This is an alias for combining {@link #STRING}, {@link #NUMBER} {@link #BOOLEAN}, {@link #OBJECT} and {@link #ARRAY} but not
+             * {@link #NULL}.
+             */
+            NON_NULL,
+            /**
+             * Represents all possible values.
+             * This is an alias for combining {@link #STRING}, {@link #NUMBER} {@link #BOOLEAN}, {@link #OBJECT}, {@link #ARRAY} and {@link #NULL}.
+             */
+            ALL,
+            ;
+
+            private static final Map<ValueType, Set<ValueType>> DE_ALIASED_TYPES = deAliasedTypes();
+
+            private static Map<ValueType, Set<ValueType>> deAliasedTypes() {
+                Map<ValueType, Set<ValueType>> result = new EnumMap<>(ValueType.class);
+                result.put(STRING, EnumSet.of(STRING));
+                result.put(NUMBER, EnumSet.of(NUMBER));
+                result.put(BOOLEAN, EnumSet.of(BOOLEAN));
+                result.put(OBJECT, EnumSet.of(OBJECT));
+                result.put(ARRAY, EnumSet.of(ARRAY));
+                result.put(NULL, EnumSet.of(NULL));
+
+                result.put(SCALAR, EnumSet.of(STRING, NUMBER, BOOLEAN));
+                result.put(NON_NULL, EnumSet.of(STRING, NUMBER, BOOLEAN, OBJECT, ARRAY));
+                result.put(ALL, EnumSet.of(STRING, NUMBER, BOOLEAN, OBJECT, ARRAY, NULL));
+
+                return result;
+            }
+        }
+
+        /**
+         * The possible ways to deal with nested objects and arrays.
+         *
+         * @author Rob Spoor
+         * @since 1.3
+         */
+        public enum ObfuscationMode {
+            /** Obfuscate nested objects and arrays completely. **/
+            OBFUSCATE,
+
+            /** Don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties. **/
+            INHERIT,
+
+            /**
+             * Don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties.
+             * If a nested property has its own obfuscator defined this will be used instead.
+             **/
+            INHERIT_OVERRIDABLE,
+        }
     }
 
     /**
@@ -605,92 +695,5 @@ public abstract class JSONObfuscator extends Obfuscator {
         private void reset() {
             this.truncatedIndicator = null;
         }
-    }
-
-    /**
-     * The possible value types.
-     *
-     * @author Rob Spoor
-     * @since 3.0
-     */
-    public enum ValueType {
-        /**
-         * Represents string values.
-         */
-        STRING,
-        /**
-         * Represent numeric values.
-         */
-        NUMBER,
-        /**
-         * Represents boolean values.
-         */
-        BOOLEAN,
-        /**
-         * Represents object values.
-         */
-        OBJECT,
-        /**
-         * Represents array values.
-         */
-        ARRAY,
-        /**
-         * Represents {@code null} values.
-         */
-        NULL,
-        /**
-         * Represents scalar values: strings, numbers and booleans.
-         * This is an alias for combining {@link #STRING}, {@link #NUMBER} and {@link #BOOLEAN}.
-         */
-        SCALAR,
-        /**
-         * Represents all possible values.
-         * This is an alias for combining {@link #STRING}, {@link #NUMBER} {@link #BOOLEAN}, {@link #OBJECT} and {@link #ARRAY} but not {@link #NULL}.
-         */
-        NON_NULL,
-        /**
-         * Represents all possible values.
-         * This is an alias for combining {@link #STRING}, {@link #NUMBER} {@link #BOOLEAN}, {@link #OBJECT}, {@link #ARRAY} and {@link #NULL}.
-         */
-        ALL,
-        ;
-
-        private static final Map<ValueType, Set<ValueType>> DE_ALIASED_TYPES = deAliasedTypes();
-
-        private static Map<ValueType, Set<ValueType>> deAliasedTypes() {
-            Map<ValueType, Set<ValueType>> result = new EnumMap<>(ValueType.class);
-            result.put(STRING, EnumSet.of(STRING));
-            result.put(NUMBER, EnumSet.of(NUMBER));
-            result.put(BOOLEAN, EnumSet.of(BOOLEAN));
-            result.put(OBJECT, EnumSet.of(OBJECT));
-            result.put(ARRAY, EnumSet.of(ARRAY));
-            result.put(NULL, EnumSet.of(NULL));
-
-            result.put(SCALAR, EnumSet.of(STRING, NUMBER, BOOLEAN));
-            result.put(NON_NULL, EnumSet.of(STRING, NUMBER, BOOLEAN, OBJECT, ARRAY));
-            result.put(ALL, EnumSet.of(STRING, NUMBER, BOOLEAN, OBJECT, ARRAY, NULL));
-
-            return result;
-        }
-    }
-
-    /**
-     * The possible ways to deal with nested objects and arrays.
-     *
-     * @author Rob Spoor
-     * @since 1.3
-     */
-    public enum ObfuscationMode {
-        /** Obfuscate nested objects and arrays completely. **/
-        OBFUSCATE,
-
-        /** Don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties. **/
-        INHERIT,
-
-        /**
-         * Don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties.
-         * If a nested property has its own obfuscator defined this will be used instead.
-         **/
-        INHERIT_OVERRIDABLE,
     }
 }

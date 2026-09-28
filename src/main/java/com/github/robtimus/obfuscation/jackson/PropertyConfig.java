@@ -19,36 +19,22 @@ package com.github.robtimus.obfuscation.jackson;
 
 import java.util.Objects;
 import com.github.robtimus.obfuscation.Obfuscator;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.ObfuscationMode;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 
-final class PropertyConfig {
+record PropertyConfig(
+        Obfuscator obfuscator,
+        ObfuscationMode forObjects,
+        ObfuscationMode forArrays,
+        boolean performObfuscation
+) {
 
-    final Obfuscator obfuscator;
-    final ObfuscationMode forObjects;
-    final ObfuscationMode forArrays;
-    final boolean performObfuscation;
+    PropertyConfig {
+        Objects.requireNonNull(obfuscator);
+        Objects.requireNonNull(forObjects);
+        Objects.requireNonNull(forArrays);
+    }
 
     PropertyConfig(Obfuscator obfuscator, ObfuscationMode forObjects, ObfuscationMode forArrays) {
-        this.obfuscator = Objects.requireNonNull(obfuscator);
-        this.forObjects = Objects.requireNonNull(forObjects);
-        this.forArrays = Objects.requireNonNull(forArrays);
-        this.performObfuscation = !obfuscator.equals(Obfuscator.none());
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return this == o
-                || o instanceof PropertyConfig other && equals(other);
-    }
-
-    private boolean equals(PropertyConfig other) {
-        return obfuscator.equals(other.obfuscator)
-                && forObjects == other.forObjects
-                && forArrays == other.forArrays;
-    }
-
-    @Override
-    public int hashCode() {
-        return obfuscator.hashCode() ^ forObjects.hashCode() ^ forArrays.hashCode();
+        this(obfuscator, forObjects, forArrays, !obfuscator.equals(Obfuscator.none()));
     }
 }
