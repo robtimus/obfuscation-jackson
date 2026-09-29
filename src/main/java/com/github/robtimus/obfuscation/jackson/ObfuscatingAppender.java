@@ -19,9 +19,7 @@ package com.github.robtimus.obfuscation.jackson;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
-import java.util.Collections;
 import java.util.Deque;
-import java.util.Map;
 import java.util.function.Function;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
@@ -31,7 +29,7 @@ abstract class ObfuscatingAppender<T> {
     private final Source source;
     private final Appendable destination;
 
-    private final Map<ValueType, Map<String, PropertyConfig>> properties;
+    private final PropertyConfig.Lookup properties;
 
     private final int textOffset;
     private final int textEnd;
@@ -51,7 +49,7 @@ abstract class ObfuscatingAppender<T> {
 
     private final Deque<ObfuscatedProperty<T>> currentProperties = new ArrayDeque<>();
 
-    ObfuscatingAppender(Source source, int start, int end, Appendable destination, Map<ValueType, Map<String, PropertyConfig>> properties) {
+    ObfuscatingAppender(Source source, int start, int end, Appendable destination, PropertyConfig.Lookup properties) {
         this.source = source;
         this.textOffset = start;
         this.textEnd = end;
@@ -212,7 +210,7 @@ abstract class ObfuscatingAppender<T> {
 
     private void lookupConfigIfNeeded(ValueType valueType) {
         if (needsObfuscatorLookup) {
-            PropertyConfig config = properties.getOrDefault(valueType, Collections.emptyMap()).get(currentPropertyName);
+            PropertyConfig config = properties.find(currentPropertyName, valueType);
             if (config != null) {
                 ObfuscatedProperty<T> currentProperty = new ObfuscatedProperty<>(config);
                 currentProperties.addLast(currentProperty);

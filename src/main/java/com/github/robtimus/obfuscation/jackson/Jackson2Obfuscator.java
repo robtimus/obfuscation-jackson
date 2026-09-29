@@ -19,7 +19,6 @@ package com.github.robtimus.obfuscation.jackson;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Map;
 import java.util.Set;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonFactoryBuilder;
@@ -28,7 +27,6 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.exc.StreamReadException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
 import com.github.robtimus.obfuscation.support.LimitAppendable;
 
 @SuppressWarnings("squid:S2160")
@@ -146,9 +144,7 @@ final class Jackson2Obfuscator extends JSONObfuscator {
 
         private final JsonParser jsonParser;
 
-        private Appender(JsonParser jsonParser, Source source, int start, int end, Appendable destination,
-                         Map<ValueType, Map<String, PropertyConfig>> properties) {
-
+        private Appender(JsonParser jsonParser, Source source, int start, int end, Appendable destination, PropertyConfig.Lookup properties) {
             super(source, start, end, destination, properties);
 
             this.jsonParser = jsonParser;

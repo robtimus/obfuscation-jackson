@@ -20,9 +20,7 @@ package com.github.robtimus.obfuscation.jackson;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
-import java.util.Map;
 import java.util.Set;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
 import com.github.robtimus.obfuscation.support.LimitAppendable;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
@@ -154,9 +152,7 @@ final class Jackson3Obfuscator extends JSONObfuscator {
 
         private final JsonParser jsonParser;
 
-        private Appender(JsonParser jsonParser, Source source, int start, int end, Appendable destination,
-                         Map<ValueType, Map<String, PropertyConfig>> properties) {
-
+        private Appender(JsonParser jsonParser, Source source, int start, int end, Appendable destination, PropertyConfig.Lookup properties) {
             super(source, start, end, destination, properties);
 
             this.jsonParser = jsonParser;
