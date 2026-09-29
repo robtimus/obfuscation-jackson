@@ -34,9 +34,9 @@ JSONObfuscator.builder()
         .withProperty("foo", obfuscator, PropertyConfigurer::caseInsensitive)
 ```
 
-### scalarsOnlyByDefault, excludeObjectsByDefault, excludeArraysByDefault, all
+### scalarsOnlyByDefault, excludeObjectsByDefault, excludeArraysByDefault, allByDefault
 
-`JSONObfuscator.scalarsOnlyByDefault`, `JSONObfuscator.excludeObjectsByDefault`, `JSONObfuscator.excludeArraysByDefault` and `JSONObfuscator.allByDefault` have been removed. You need to use new method `withValueTypesByDefault` instead. For example:
+`JSONObfuscator.Builder.scalarsOnlyByDefault`, `JSONObfuscator.Builder.excludeObjectsByDefault`, `JSONObfuscator.Builder.excludeArraysByDefault` and `JSONObfuscator.Builder.allByDefault` have been removed. You need to use new method `withValueTypesByDefault` instead. For example:
 
 ```java
 /*
@@ -88,7 +88,7 @@ Note that `ValueType.SCALAR` does not include `null` values, so you need to add 
 
 ### includeObjectsByDefault, includeArraysByDefault
 
-`JSONObfuscator.includeObjectsByDefault` and `JSONObfuscator.includeArraysByDefault` have been removed. You need to combine methods `forObjectsByDefault` and/or `forArraysByDefault` with new method `withValueTypesByDefault` instead. For example:
+`JSONObfuscator.Builder.includeObjectsByDefault` and `JSONObfuscator.Builder.includeArraysByDefault` have been removed. You need to combine methods `forObjectsByDefault` and/or `forArraysByDefault` with new method `withValueTypesByDefault` instead. For example:
 
 ```java
 /*
@@ -146,7 +146,7 @@ JSONObfuscator.builder()
 
 ### scalarsOnly, excludeObjects, excludeArrays, all
 
-`JSONObfuscator.PropertyConfigurer.scalarsOnly`, `JSONObfuscator.PropertyConfigurer.excludeObjects`, `JSONObfuscator.PropertyConfigurer.excludeArrays` and `JSONObfuscator.all` have been removed. You need to use new method `withValueTypes` instead. For example:
+`JSONObfuscator.PropertyConfigurer.scalarsOnly`, `JSONObfuscator.PropertyConfigurer.excludeObjects`, `JSONObfuscator.PropertyConfigurer.excludeArrays` and `JSONObfuscator.PropertyConfigurer.all` have been removed. You need to use new method `withValueTypes` instead. For example:
 
 ```java
 /*
@@ -253,11 +253,11 @@ JSONObfuscator.builder()
 
 `JSONObfuscator.LimitConfigurer` is no longer an interface but instead a final class. If you are creating mocks or implementing it directly you need to use actual instances passed to the `Consumer` argument of `JSONObfuscator.Builder.limitTo`.
 
-## JSONObfuscator.ObfuscationMode
+## JSONObfuscator.PropertyConfigurer.ObfuscationMode
 
 ### EXCLUDE
 
-Constant `ObfuscationMode.EXCLUDE` has been removed. You need to use new method `withValueTypesByDefault` and/or `withValueTypes` as documented above instead. For example:
+Constant `ObfuscationMode.PropertyConfigurer.EXCLUDE` has been removed. You need to use new method `withValueTypesByDefault` and/or `withValueTypes` as documented above instead. For example:
 
 ```java
 /* old
