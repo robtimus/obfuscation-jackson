@@ -6,7 +6,7 @@
 
 ### withProperty
 
-`JSONObfuscator.Builder.withProperty` no longer returns a `PropertyConfigurer`. Instead it is overloaded to take a `Consumer<PropertyConfigurer>`. If you called any `PropertyConfigurer` methods you need to provide a lambda instead. For example:
+`JSONObfuscator.Builder.withProperty` no longer returns a `PropertyConfigurer`. Instead it is overloaded to take a `Consumer<PropertyNameConfigurer>`. If you called any `PropertyConfigurer` methods you need to provide a lambda instead. For example:
 
 ```java
 /* old:
@@ -23,7 +23,7 @@ JSONObfuscator.builder()
 
 #### Case sensitivity
 
-`JSONObfuscator.Builder.withProperty` no longer accepts a `CaseSensitivity` argument. You need to use new `PropertyConfigurer` methods `caseSensitive()` and `caseInsensitive()` instead. For example:
+`JSONObfuscator.Builder.withProperty` no longer accepts a `CaseSensitivity` argument. You need to use methods `caseSensitive()` and `caseInsensitive()` of new class `PropertyNameConfigurer` instead. For example:
 
 ```java
 /* old:
@@ -31,7 +31,7 @@ JSONObfuscator.builder()
         .withProperty("foo", obfuscator, CaseSensitivity.CASE_INSENSITIVE)
  */
 JSONObfuscator.builder()
-        .withProperty("foo", obfuscator, PropertyConfigurer::caseInsensitive)
+        .withProperty("foo", obfuscator, PropertyNameConfigurer::caseInsensitive)
 ```
 
 ### scalarsOnlyByDefault, excludeObjectsByDefault, excludeArraysByDefault, allByDefault
@@ -142,7 +142,7 @@ JSONObfuscator.builder()
 
 ## JSONObfuscator.PropertyConfigurer
 
-`JSONObfuscator.PropertyConfigurer` is no longer an interface but instead a final class. If you are creating mocks or implementing it directly you need to use actual instances passed to the `Consumer` argument of `JSONObfuscator.Builder.withProperty`.
+`JSONObfuscator.PropertyConfigurer` is no longer an interface but instead an abstract sealed class with subclasses `JSONObfuscator.PropertyNameConfigurer` and `JSONObfuscator.PropertyPathConfigurer`. If you are creating mocks or implementing it directly you need to use actual instances passed to the `Consumer` argument of `JSONObfuscator.Builder.withProperty` or `JSONObfuscator.Builder.withPropertyPath`.
 
 ### scalarsOnly, excludeObjects, excludeArrays, all
 

@@ -36,6 +36,28 @@ The three possible modes for both objects and arrays are:
 * `INHERIT`: don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties.
 * `INHERIT_OVERRIDABLE`: don't obfuscate nested objects or arrays, but use the obfuscator for all nested scalar properties. If a nested property has its own obfuscator defined this will be used instead.
 
+## Different obfuscation for properties with the same name
+
+In certain cases, matching just the property name is not sufficient. For example, using `withProperty("value", obfuscator)` will use the given obfuscator for all properties named "value".
+
+There are two ways to configure different obfuscation for properties with the same name:
+
+1. Add the property multiple times but with different value types. For instance:
+    ```java
+    Obfuscator obfuscator = JSONObfuscator.builder()
+            .withProperty("value", obfuscatorForStrings, property -> property.withValueTypes(ValueType.STRING))
+            .withProperty("value", obfuscatorForNumbers, property -> property.withValueTypes(ValueType.NUMBER))
+            .build();
+    ```
+
+2. Add a matcher for specific occurrences based on the path to the property. For instance:
+    ```java
+    Obfuscator obfuscator = JSONObfuscator.builder()
+            // only match "value" properties if they are nested inside an object with property name "email"
+            .withPropertyPath(PropertyPath.endsWith("email", "value"), obfuscatorForEmails)
+            .build();
+    ```
+
 ## Handling malformed JSON
 
 If malformed JSON is encountered, obfuscation aborts. It will add a message to the result indicating that obfuscation was aborted. This message can be changed or turned off when creating JSON obfuscators:

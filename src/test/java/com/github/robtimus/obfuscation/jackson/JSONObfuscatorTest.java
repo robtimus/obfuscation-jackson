@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -48,6 +49,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -74,9 +76,10 @@ import com.github.robtimus.junit.support.extension.testlogger.Reload4jLoggerCont
 import com.github.robtimus.junit.support.extension.testlogger.TestLogger;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.Builder;
-import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyNameConfigurer;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyPath;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
@@ -98,7 +101,8 @@ class JSONObfuscatorTest {
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), p -> p.caseSensitive())), true),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", fixedLength(3))), false),
                 arguments(obfuscator,
-                        createObfuscator(builder().withProperty("test", none()).withProperty("test", none(), PropertyConfigurer::caseInsensitive)),
+                        createObfuscator(
+                                builder().withProperty("test", none()).withProperty("test", none(), PropertyNameConfigurer::caseInsensitive)),
                         false),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), p -> p.withValueTypes(ValueType.SCALAR))), false),
                 arguments(obfuscator, createObfuscator(builder().withProperty("test", none(), p -> p.forObjects(ObfuscationMode.INHERIT))), false),
@@ -183,6 +187,53 @@ class JSONObfuscatorTest {
         }
 
         @Nested
+        @DisplayName("withPropertyPath")
+        class WithPropertyPath {
+
+            @Test
+            @DisplayName("duplicate matcher with exact match")
+            void testDuplicateMatcherWithExactMatch() {
+                Obfuscator obfuscator = Obfuscator.all();
+                Builder builder = builder().withPropertyPath(PropertyPath.startsWith("foo"), obfuscator);
+                PropertyPath.Matcher matcher = PropertyPath.startsWith("foo");
+                assertThrows(IllegalArgumentException.class, () -> builder.withPropertyPath(matcher, obfuscator));
+            }
+
+            @Test
+            @DisplayName("duplicate matcher with some overlap")
+            void testDuplicatePropertyWithSomeOverlap() {
+                Obfuscator obfuscator = Obfuscator.all();
+                Builder builder = builder()
+                        .withValueTypesByDefault(ValueType.STRING, ValueType.NULL)
+                        .withPropertyPath(PropertyPath.startsWith("foo"), obfuscator, property -> property.withValueTypes(ValueType.SCALAR));
+                PropertyPath.Matcher matcher = PropertyPath.startsWith("foo");
+                assertThrows(IllegalArgumentException.class, () -> builder.withPropertyPath(matcher, obfuscator));
+            }
+
+            @Test
+            @DisplayName("no duplicate with lambdas")
+            void testNoDuplicateWithLambdas() {
+                Obfuscator obfuscator = Obfuscator.all();
+                Builder builder = builder().withPropertyPath(p -> p.lastProperty().equals("foo"), obfuscator);
+                PropertyPath.Matcher matcher = p -> p.lastProperty().equals("foo");
+                assertDoesNotThrow(() -> builder.withPropertyPath(matcher, obfuscator));
+            }
+
+            @Test
+            @DisplayName("duplicate matcher with shared lambda")
+            void testDuplicateMatcherWithSharedLambda() {
+                Obfuscator obfuscator = Obfuscator.all();
+                Builder builder = builder().withPropertyPath(matches(), obfuscator);
+                PropertyPath.Matcher matcher = matches();
+                assertThrows(IllegalArgumentException.class, () -> builder.withPropertyPath(matcher, obfuscator));
+            }
+
+            private PropertyPath.Matcher matches() {
+                return p -> p.lastProperty().equals("foo");
+            }
+        }
+
+        @Nested
         @DisplayName("limitTo")
         class LimitTo {
 
@@ -229,7 +280,7 @@ class JSONObfuscatorTest {
 
             ObfuscatingCaseSensitivelyOverridden() {
                 super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.all",
-                        () -> configureBuilderCaseInsensitive(builder().caseSensitiveByDefault(), PropertyConfigurer::caseInsensitive));
+                        () -> configureBuilderCaseInsensitive(builder().caseSensitiveByDefault(), PropertyNameConfigurer::caseInsensitive));
             }
         }
 
@@ -323,6 +374,17 @@ class JSONObfuscatorTest {
                     super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.limited.without-indicator",
                             () -> configureBuilder(builder().limitTo(583, limit -> limit.withTruncatedIndicator(null))));
                 }
+            }
+        }
+
+        @Nested
+        @DisplayName("paths and name matching")
+        @TestInstance(Lifecycle.PER_CLASS)
+        class PathAndNameMatching extends ObfuscatorTest {
+
+            PathAndNameMatching() {
+                super("JSONObfuscator.input.valid.json", "JSONObfuscator.expected.valid.path-and-name-matching",
+                        () -> configureBuilderWithPathsAndNames(builder()));
             }
         }
     }
@@ -659,6 +721,115 @@ class JSONObfuscatorTest {
         }
     }
 
+    @Test
+    @DisplayName("PropertyPath structure")
+    void testPropertyPathStructure() {
+        String input = readResource("JSONObfuscator.input.valid.json");
+
+        List<List<String>> capturedPaths = new ArrayList<>();
+        PropertyPath.Matcher capturingMatcher = p -> {
+            // Need to create a copy
+            capturedPaths.add(List.copyOf(p.properties()));
+            return false;
+        };
+
+        JSONObfuscator.builder()
+                .withPropertyPath(capturingMatcher, Obfuscator.none())
+                .build()
+                .obfuscateText(input);
+
+        List<List<String>> expected = List.of(
+                List.of("string"),
+                List.of("int"),
+                List.of("bigInt"),
+                List.of("float"),
+                List.of("booleanTrue"),
+                List.of("booleanFalse"),
+                List.of("null"),
+                List.of("object"),
+                List.of("object", "string"),
+                List.of("object", "int"),
+                List.of("object", "bigInt"),
+                List.of("object", "float"),
+                List.of("object", "booleanTrue"),
+                List.of("object", "booleanFalse"),
+                List.of("object", "null"),
+                List.of("object", "nested"),
+                List.of("object", "nested", "prop1"),
+                List.of("object", "nested", "prop2"),
+                List.of("array"),
+                List.of("notMatchedString"),
+                List.of("notMatchedInt"),
+                List.of("notMatchedBigInt"),
+                List.of("notMatchedFloat"),
+                List.of("notMatchedBooleanTrue"),
+                List.of("notMatchedBooleanFalse"),
+                List.of("nonMatchedNull"),
+                List.of("nonMatchedObject"),
+                List.of("nonMatchedObject", "notMatchedString"),
+                List.of("nonMatchedObject", "notMatchedInt"),
+                List.of("nonMatchedObject", "notMatchedBigInt"),
+                List.of("nonMatchedObject", "notMatchedFloat"),
+                List.of("nonMatchedObject", "notMatchedBooleanTrue"),
+                List.of("nonMatchedObject", "notMatchedBooleanFalse"),
+                List.of("nonMatchedObject", "nonMatchedNull"),
+                List.of("nested"),
+                List.of("nested", "string"),
+                List.of("nested", "int"),
+                List.of("nested", "bigInt"),
+                List.of("nested", "float"),
+                List.of("nested", "booleanTrue"),
+                List.of("nested", "booleanFalse"),
+                List.of("nested", "null"),
+                List.of("nested", "object"),
+                List.of("nested", "object", "string"),
+                List.of("nested", "object", "int"),
+                List.of("nested", "object", "bigInt"),
+                List.of("nested", "object", "float"),
+                List.of("nested", "object", "booleanTrue"),
+                List.of("nested", "object", "booleanFalse"),
+                List.of("nested", "object", "nested"),
+                List.of("nested", "object", "nested", "prop1"),
+                List.of("nested", "object", "nested", "prop2"),
+                List.of("nested", "array"),
+                List.of("nested", "notMatchedString"),
+                List.of("nested", "notMatchedInt"),
+                List.of("nested", "notMatchedBigInt"),
+                List.of("nested", "notMatchedFloat"),
+                List.of("nested", "notMatchedBooleanTrue"),
+                List.of("nested", "notMatchedBooleanFalse"),
+                List.of("nested", "nonMatchedNull"),
+                List.of("notObfuscated"),
+                List.of("notObfuscated", "string"),
+                List.of("notObfuscated", "int"),
+                List.of("notObfuscated", "bigInt"),
+                List.of("notObfuscated", "float"),
+                List.of("notObfuscated", "booleanTrue"),
+                List.of("notObfuscated", "booleanFalse"),
+                List.of("notObfuscated", "null"),
+                List.of("notObfuscated", "object"),
+                List.of("notObfuscated", "object", "string"),
+                List.of("notObfuscated", "object", "int"),
+                List.of("notObfuscated", "object", "bigInt"),
+                List.of("notObfuscated", "object", "float"),
+                List.of("notObfuscated", "object", "booleanTrue"),
+                List.of("notObfuscated", "object", "booleanFalse"),
+                List.of("notObfuscated", "object", "nested"),
+                List.of("notObfuscated", "object", "nested", "prop1"),
+                List.of("notObfuscated", "object", "nested", "prop2"),
+                List.of("notObfuscated", "array"),
+                List.of("notObfuscated", "notMatchedString"),
+                List.of("notObfuscated", "notMatchedInt"),
+                List.of("notObfuscated", "notMatchedBigInt"),
+                List.of("notObfuscated", "notMatchedFloat"),
+                List.of("notObfuscated", "notMatchedBooleanTrue"),
+                List.of("notObfuscated", "notMatchedBooleanFalse"),
+                List.of("notObfuscated", "nonMatchedNull")
+        );
+
+        assertEquals(expected, capturedPaths);
+    }
+
     private static Obfuscator createObfuscator(Builder builder) {
         return builder
                 .transform(JSONObfuscatorTest::configureBuilder)
@@ -692,7 +863,7 @@ class JSONObfuscatorTest {
         return configureBuilderCaseInsensitive(builder, property -> { /* do nothing */ });
     }
 
-    private static Builder configureBuilderCaseInsensitive(Builder builder, Consumer<PropertyConfigurer> configurer) {
+    private static Builder configureBuilderCaseInsensitive(Builder builder, Consumer<PropertyNameConfigurer> configurer) {
         Obfuscator obfuscator = fixedLength(3);
         return builder
                 .withProperty("STRING", obfuscator, configurer)
@@ -752,6 +923,14 @@ class JSONObfuscatorTest {
                 .withProperty("array", fixedLength(3, 'a'))
                 .withProperty("null", obfuscator)
                 .withProperty("notObfuscated", none());
+    }
+
+    private static Builder configureBuilderWithPathsAndNames(Builder builder) {
+        return builder
+                .withProperty("null", Obfuscator.fixedValue("<NULL>"))
+                .withPropertyPath(PropertyPath.startsWith("object", "nested"), Obfuscator.fixedValue("<nested>"), property -> property
+                        .forArrays(ObfuscationMode.INHERIT))
+                .withPropertyPath(PropertyPath.containsAt(-2, "nested"), Obfuscator.fixedValue("<in-nested>"));
     }
 
     private static Builder configureBuilder(Builder builder, JacksonVersion jacksonVersion) {

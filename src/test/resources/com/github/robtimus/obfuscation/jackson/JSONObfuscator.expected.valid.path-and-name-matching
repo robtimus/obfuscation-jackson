@@ -1,0 +1,86 @@
+{
+  "string": "string\"int",
+  "int": 123456,
+  "bigInt": 123456789012345678901234567890,
+  "float": 1234.56,
+  "booleanTrue": true,
+  "booleanFalse": false,
+  "null": <NULL>,
+  "object": {
+    "string": "string\"int",
+    "int": 123456,
+    "bigInt": 123456789012345678901234567890,
+    "float": 1234.56,
+    "booleanTrue": true,
+    "booleanFalse": false,
+    "null": <NULL>,
+    "nested": [ {
+      "prop1": "<nested>",
+      "prop2": "<nested>"
+    } ]
+  },
+  "array": [ [ "1", "2" ], {} ],
+  "notMatchedString": "123456",
+  "notMatchedInt": 123456,
+  "notMatchedBigInt": 123456789012345678901234567890,
+  "notMatchedFloat": 1234.56,
+  "notMatchedBooleanTrue": true,
+  "notMatchedBooleanFalse": false,
+  "nonMatchedNull": null,
+  "nonMatchedObject": {
+    "notMatchedString": "123456",
+    "notMatchedInt": 123456,
+    "notMatchedBigInt": 123456789012345678901234567890,
+    "notMatchedFloat": 1234.56,
+    "notMatchedBooleanTrue": true,
+    "notMatchedBooleanFalse": false,
+    "nonMatchedNull": null
+  },
+  "nested": [ {
+    "string": "<in-nested>",
+    "int": <in-nested>,
+    "bigInt": <in-nested>,
+    "float": <in-nested>,
+    "booleanTrue": <in-nested>,
+    "booleanFalse": <in-nested>,
+    "null": <in-nested>,
+    "object": <in-nested>,
+    "array": <in-nested>,
+    "notMatchedString": "<in-nested>",
+    "notMatchedInt": <in-nested>,
+    "notMatchedBigInt": <in-nested>,
+    "notMatchedFloat": <in-nested>,
+    "notMatchedBooleanTrue": <in-nested>,
+    "notMatchedBooleanFalse": <in-nested>,
+    "nonMatchedNull": <in-nested>
+  } ],
+  "notObfuscated": {
+    "string": "string\"int",
+    "int": 123456,
+    "bigInt": 123456789012345678901234567890,
+    "float": 1234.56,
+    "booleanTrue": true,
+    "booleanFalse": false,
+    "null": <NULL>,
+    "object": {
+      "string": "string\"int",
+      "int": 123456,
+      "bigInt": 123456789012345678901234567890,
+      "float": 1234.56,
+      "booleanTrue": true,
+      "booleanFalse": false,
+      "nested": [ {
+        "prop1": "<in-nested>",
+        "prop2": "<in-nested>"
+      } ]
+    },
+    "array": [ [ "1", "2" ], {} ],
+    "notMatchedString": "123456",
+    "notMatchedInt": 123456,
+    "notMatchedBigInt": 123456789012345678901234567890,
+    "notMatchedFloat": 1234.56,
+    "notMatchedBooleanTrue": true,
+    "notMatchedBooleanFalse": false,
+    "nonMatchedNull": null
+  }
+}

@@ -23,6 +23,7 @@ import java.util.Deque;
 import java.util.function.Function;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyPath;
 
 abstract class ObfuscatingAppender<T> {
 
@@ -45,8 +46,9 @@ abstract class ObfuscatingAppender<T> {
      * elements. This flag is set to true only from propertyName(), and reset to false after performing a lookup.
      */
     private boolean needsObfuscatorLookup;
-    private String currentPropertyName;
 
+    private final PropertyPath propertyPath = new PropertyPath();
+    private final Deque<T> structure = new ArrayDeque<>();
     private final Deque<ObfuscatedProperty<T>> currentProperties = new ArrayDeque<>();
 
     ObfuscatingAppender(Source source, int start, int end, Appendable destination, PropertyConfig.Lookup properties) {
@@ -95,6 +97,8 @@ abstract class ObfuscatingAppender<T> {
     }
 
     private void startStructure(T startToken, ValueType valueType, Function<PropertyConfig, ObfuscationMode> getObfuscationMode) throws IOException {
+        addToStructure(startToken);
+
         lookupConfigIfNeeded(valueType);
         ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
         if (currentProperty != null) {
@@ -134,13 +138,26 @@ abstract class ObfuscatingAppender<T> {
             // else still in a nested structure array that's being obfuscated
         }
         // else currently no structure is being obfuscated
+
+        popFromPropertyPath();
+        removeFromStructure();
+    }
+
+    private void addToStructure(T startToken) {
+        structure.addLast(startToken);
+    }
+
+    private void removeFromStructure() {
+        structure.removeLast();
     }
 
     void propertyName() throws IOException {
+        String propertyName = currentPropertyName();
+        pushToPropertyPath(propertyName);
+
         ObfuscatedProperty<T> currentProperty = currentProperties.peekLast();
         if (currentProperty == null || currentProperty.allowsOverriding()) {
             needsObfuscatorLookup = true;
-            currentPropertyName = currentPropertyName();
             if (source.needsTruncating()) {
                 updateOtherTokenFields(propertyNameToken());
                 appendUntilToken();
@@ -168,6 +185,8 @@ abstract class ObfuscatingAppender<T> {
             }
         }
         // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
+
+        popFromPropertyPath();
     }
 
     void valueNumber() throws IOException {
@@ -183,6 +202,8 @@ abstract class ObfuscatingAppender<T> {
             }
         }
         // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
+
+        popFromPropertyPath();
     }
 
     void valueBoolean(T token) throws IOException {
@@ -206,16 +227,28 @@ abstract class ObfuscatingAppender<T> {
             }
         }
         // else not obfuscating, or using Obfuscator.none(), or in a nested object or or array that's being obfuscated; do nothing
+
+        popFromPropertyPath();
     }
 
     private void lookupConfigIfNeeded(ValueType valueType) {
         if (needsObfuscatorLookup) {
-            PropertyConfig config = properties.find(currentPropertyName, valueType);
+            PropertyConfig config = properties.find(propertyPath, valueType);
             if (config != null) {
                 ObfuscatedProperty<T> currentProperty = new ObfuscatedProperty<>(config);
                 currentProperties.addLast(currentProperty);
             }
             needsObfuscatorLookup = false;
+        }
+    }
+
+    private void pushToPropertyPath(String propertyName) {
+        propertyPath.push(propertyName);
+    }
+
+    private void popFromPropertyPath() {
+        if (structure.peekLast() == startObjectToken()) {
+            propertyPath.pop();
         }
     }
 

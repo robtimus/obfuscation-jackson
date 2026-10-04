@@ -25,21 +25,38 @@ import static com.github.robtimus.obfuscation.support.ObfuscatorUtils.reader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.github.robtimus.obfuscation.Obfuscator;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ObfuscationMode;
 import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyConfigurer.ValueType;
+import com.github.robtimus.obfuscation.jackson.JSONObfuscator.PropertyPath.Matcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.AndMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.ContainsAtIgnoreCaseMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.ContainsAtMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.EndsWithIgnoreCaseMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.EndsWithMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.IsIgnoreCaseMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.IsMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.NotMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.OrMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.StartsWithIgnoreCaseMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.StartsWithMatcher;
 import com.github.robtimus.obfuscation.support.CachingObfuscatingWriter;
 import com.github.robtimus.obfuscation.support.CaseSensitivity;
 import com.github.robtimus.obfuscation.support.CountingReader;
@@ -60,6 +77,7 @@ public abstract class JSONObfuscator extends Obfuscator {
 
     final PropertyConfig.Lookup properties;
     private final String propertiesRepresentation;
+    private final String propertyPathsRepresentation;
 
     final String malformedJSONWarning;
 
@@ -69,6 +87,7 @@ public abstract class JSONObfuscator extends Obfuscator {
     JSONObfuscator(Builder builder) {
         properties = builder.properties.build();
         propertiesRepresentation = builder.propertiesRepresentation();
+        propertyPathsRepresentation = builder.propertyPathsRepresentation();
 
         malformedJSONWarning = builder.malformedJSONWarning;
 
@@ -142,6 +161,7 @@ public abstract class JSONObfuscator extends Obfuscator {
     public final String toString() {
         return JSONObfuscator.class.getName()
                 + "[properties=" + propertiesRepresentation
+                + ",propertyPaths=" + propertyPathsRepresentation
                 + ",malformedJSONWarning=" + malformedJSONWarning
                 + ",limit=" + limit
                 + ",truncatedIndicator=" + truncatedIndicator
@@ -169,6 +189,7 @@ public abstract class JSONObfuscator extends Obfuscator {
 
         private final PropertyConfig.Lookup.Builder properties;
         private final StringBuilder propertiesRepresentation;
+        private final StringBuilder propertyPathsRepresentation;
 
         private CaseSensitivity defaultCaseSensitivity;
         private Set<ValueType> defaultValueTypes;
@@ -184,12 +205,14 @@ public abstract class JSONObfuscator extends Obfuscator {
         private ObfuscationMode forObjectsByDefault;
         private ObfuscationMode forArraysByDefault;
 
-        private final PropertyConfigurer propertyConfigurer;
+        private final PropertyNameConfigurer propertyNameConfigurer;
+        private final PropertyPathConfigurer propertyPathConfigurer;
         private final LimitConfigurer limitConfigurer;
 
         private Builder() {
             properties = PropertyConfig.Lookup.builder();
             propertiesRepresentation = new StringBuilder().append('{');
+            propertyPathsRepresentation = new StringBuilder().append('{');
 
             defaultCaseSensitivity = CaseSensitivity.CASE_SENSITIVE;
             defaultValueTypes = EnumSet.of(ValueType.ALL);
@@ -202,7 +225,8 @@ public abstract class JSONObfuscator extends Obfuscator {
             forObjectsByDefault = ObfuscationMode.OBFUSCATE;
             forArraysByDefault = ObfuscationMode.OBFUSCATE;
 
-            propertyConfigurer = new PropertyConfigurer();
+            propertyNameConfigurer = new PropertyNameConfigurer();
+            propertyPathConfigurer = new PropertyPathConfigurer();
             limitConfigurer = new LimitConfigurer();
         }
 
@@ -238,52 +262,108 @@ public abstract class JSONObfuscator extends Obfuscator {
          *                                  types.
          * @since 3.0
          */
-        public Builder withProperty(String property, Obfuscator obfuscator, Consumer<PropertyConfigurer> configurer) {
+        public Builder withProperty(String property, Obfuscator obfuscator, Consumer<PropertyNameConfigurer> configurer) {
             Objects.requireNonNull(configurer);
             addProperty(property, obfuscator, configurer);
             return this;
         }
 
-        private void addProperty(String property, Obfuscator obfuscator, Consumer<PropertyConfigurer> configurer) {
+        private void addProperty(String property, Obfuscator obfuscator, Consumer<PropertyNameConfigurer> configurer) {
             Objects.requireNonNull(property);
             Objects.requireNonNull(obfuscator);
             try {
-                propertyConfigurer.caseSensitivity = defaultCaseSensitivity;
-                propertyConfigurer.valueTypes.clear();
-                propertyConfigurer.valueTypes.addAll(defaultValueTypes);
-                propertyConfigurer.forObjects = forObjectsByDefault;
-                propertyConfigurer.forArrays = forArraysByDefault;
+                propertyNameConfigurer.initialize(this);
                 if (configurer != null) {
-                    configurer.accept(propertyConfigurer);
+                    configurer.accept(propertyNameConfigurer);
                 }
 
-                PropertyConfig propertyConfig = new PropertyConfig(obfuscator, propertyConfigurer.forObjects, propertyConfigurer.forArrays);
+                PropertyConfig propertyConfig = propertyNameConfigurer.newConfig(obfuscator);
 
-                propertyConfigurer.valueTypes.stream()
-                        .flatMap(valueType -> ValueType.DE_ALIASED_TYPES.get(valueType).stream())
-                        .distinct()
-                        .forEach(valueType -> properties.add(property, valueType, propertyConfigurer.caseSensitivity, propertyConfig));
+                propertyNameConfigurer.valueTypes()
+                        .forEach(valueType -> properties.add(property, valueType, propertyNameConfigurer.caseSensitivity, propertyConfig));
 
                 addPropertyRepresenation(property, obfuscator);
             } finally {
-                propertyConfigurer.reset();
+                propertyNameConfigurer.reset();
             }
         }
 
-        @SuppressWarnings("nls")
         private void addPropertyRepresenation(String property, Obfuscator obfuscator) {
-            if (propertiesRepresentation.length() > 1) {
-                propertiesRepresentation.append(", ");
+            addPropertyRepresentation(property, obfuscator, propertyNameConfigurer, propertiesRepresentation);
+        }
+
+        /**
+         * Adds a matcher for property paths to obfuscate.
+         * This method is equivalent to calling for {@link #withPropertyPath(Matcher, Obfuscator, Consumer)} with a {@link Consumer} that
+         * does nothing.
+         *
+         * @param matcher The matcher for property paths.
+         * @param obfuscator The obfuscator to use for obfuscating the property.
+         * @return This object.
+         * @throws NullPointerException If the given matcher or obfuscator is {@code null}.
+         * @throws IllegalArgumentException If an equal matcher was already added for the property's value types.
+         * @since 3.0
+         */
+        public Builder withPropertyPath(PropertyPath.Matcher matcher, Obfuscator obfuscator) {
+            addPropertyPath(matcher, obfuscator, null);
+            return this;
+        }
+
+        /**
+         * Adds a matcher for property paths to obfuscate.
+         * This property will use the defaults set using {@link #withValueTypesByDefault(ValueType, ValueType...)},
+         * {@link #forObjectsByDefault(ObfuscationMode)} and {@link #forArraysByDefault(ObfuscationMode)}, unless explicitly replaced by the given
+         * {@link Consumer}.
+         * Any matcher added using this method will take precedence over properties added using {@link #withProperty(String, Obfuscator)} or
+         * {@link #withProperty(String, Obfuscator, Consumer)}.
+         *
+         * @param matcher The matcher for property paths.
+         * @param obfuscator The obfuscator to use for obfuscating the property.
+         * @param configurer A {@link Consumer} that can be used to update its argument, to override any setting for matched properties.
+         * @return This object.
+         * @throws NullPointerException If the given matcher, obfuscator or {@link Consumer} is {@code null}.
+         * @throws IllegalArgumentException If an equal matcher was already added for the property's value types.
+         * @since 3.0
+         */
+        public Builder withPropertyPath(PropertyPath.Matcher matcher, Obfuscator obfuscator, Consumer<PropertyPathConfigurer> configurer) {
+            Objects.requireNonNull(configurer);
+            addPropertyPath(matcher, obfuscator, configurer);
+            return this;
+        }
+
+        private void addPropertyPath(PropertyPath.Matcher matcher, Obfuscator obfuscator, Consumer<PropertyPathConfigurer> configurer) {
+            Objects.requireNonNull(matcher);
+            Objects.requireNonNull(obfuscator);
+            try {
+                propertyPathConfigurer.initialize(this);
+                if (configurer != null) {
+                    configurer.accept(propertyPathConfigurer);
+                }
+
+                PropertyConfig propertyConfig = propertyPathConfigurer.newConfig(obfuscator);
+
+                propertyPathConfigurer.valueTypes()
+                        .forEach(valueType -> properties.add(matcher, valueType, propertyConfig));
+
+                addPropertyPathRepresenation(matcher, obfuscator);
+            } finally {
+                propertyPathConfigurer.reset();
             }
-            propertiesRepresentation.append(property).append("=[");
-            if (propertyConfigurer.caseSensitivity == CaseSensitivity.CASE_INSENSITIVE) {
-                propertiesRepresentation.append("caseInsensitive,");
+        }
+
+        private void addPropertyPathRepresenation(PropertyPath.Matcher property, Obfuscator obfuscator) {
+            addPropertyRepresentation(property, obfuscator, propertyPathConfigurer, propertiesRepresentation);
+        }
+
+        @SuppressWarnings("nls")
+        private void addPropertyRepresentation(Object property, Obfuscator obfuscator, PropertyConfigurer<?> propertyConfigurer,
+                                               StringBuilder target) {
+            if (target.length() > 1) {
+                target.append(", ");
             }
-            propertiesRepresentation.append("valueTypes=").append(propertyConfigurer.valueTypes);
-            propertiesRepresentation.append(",obfuscator=").append(obfuscator);
-            propertiesRepresentation.append(",forObjects=").append(propertyConfigurer.forObjects);
-            propertiesRepresentation.append(",forArrays=").append(propertyConfigurer.forArrays);
-            propertiesRepresentation.append("]");
+            target.append(property).append("=[");
+            propertyConfigurer.addPropertyRepresentaton(target, obfuscator);
+            target.append("]");
         }
 
         /**
@@ -447,9 +527,17 @@ public abstract class JSONObfuscator extends Obfuscator {
         }
 
         private String propertiesRepresentation() {
-            propertiesRepresentation.append('}');
-            String result = propertiesRepresentation.toString();
-            propertiesRepresentation.deleteCharAt(propertiesRepresentation.length() - 1);
+            return finishRepresentation(propertiesRepresentation);
+        }
+
+        private String propertyPathsRepresentation() {
+            return finishRepresentation(propertyPathsRepresentation);
+        }
+
+        private String finishRepresentation(StringBuilder representation) {
+            representation.append('}');
+            String result = representation.toString();
+            representation.deleteCharAt(representation.length() - 1);
             return result;
         }
 
@@ -481,37 +569,14 @@ public abstract class JSONObfuscator extends Obfuscator {
      *
      * @author Rob Spoor
      */
-    public static final class PropertyConfigurer {
+    public abstract static sealed class PropertyConfigurer<C> {
 
         private final Set<ValueType> valueTypes = EnumSet.noneOf(ValueType.class);
 
-        private CaseSensitivity caseSensitivity;
         private ObfuscationMode forObjects;
         private ObfuscationMode forArrays;
 
         private PropertyConfigurer() {
-        }
-
-        /**
-         * Sets the case sensitivity for the property to {@link CaseSensitivity#CASE_SENSITIVE}.
-         *
-         * @return This object.
-         * @since 3.0
-         */
-        public PropertyConfigurer caseSensitive() {
-            caseSensitivity = CaseSensitivity.CASE_SENSITIVE;
-            return this;
-        }
-
-        /**
-         * Sets the case sensitivity for the property to {@link CaseSensitivity#CASE_INSENSITIVE}.
-         *
-         * @return This object.
-         * @since 3.0
-         */
-        public PropertyConfigurer caseInsensitive() {
-            caseSensitivity = CaseSensitivity.CASE_INSENSITIVE;
-            return this;
         }
 
         /**
@@ -523,11 +588,11 @@ public abstract class JSONObfuscator extends Obfuscator {
          * @throws NullPointerException If any of the given value types is {@code null}.
          * @since 3.0
          */
-        public PropertyConfigurer withValueTypes(ValueType valueType, ValueType... additionalValueTypes) {
+        public C withValueTypes(ValueType valueType, ValueType... additionalValueTypes) {
             valueTypes.clear();
             valueTypes.add(valueType);
             Collections.addAll(valueTypes, additionalValueTypes);
-            return this;
+            return self();
         }
 
         /**
@@ -538,9 +603,9 @@ public abstract class JSONObfuscator extends Obfuscator {
          * @throws NullPointerException If the given obfuscation mode is {@code null}.
          * @since 1.3
          */
-        public PropertyConfigurer forObjects(ObfuscationMode obfuscationMode) {
+        public C forObjects(ObfuscationMode obfuscationMode) {
             forObjects = Objects.requireNonNull(obfuscationMode);
-            return this;
+            return self();
         }
 
         /**
@@ -551,14 +616,43 @@ public abstract class JSONObfuscator extends Obfuscator {
          * @throws NullPointerException If the given obfuscation mode is {@code null}.
          * @since 1.3
          */
-        public PropertyConfigurer forArrays(ObfuscationMode obfuscationMode) {
+        public C forArrays(ObfuscationMode obfuscationMode) {
             forArrays = Objects.requireNonNull(obfuscationMode);
-            return this;
+            return self();
         }
 
-        private void reset() {
+        @SuppressWarnings("unchecked")
+        private C self() {
+            return (C) this;
+        }
+
+        PropertyConfig newConfig(Obfuscator obfuscator) {
+            return new PropertyConfig(obfuscator, forObjects, forArrays);
+        }
+
+        Stream<ValueType> valueTypes() {
+            return valueTypes.stream()
+                    .flatMap(valueType -> ValueType.DE_ALIASED_TYPES.get(valueType).stream())
+                    .distinct();
+        }
+
+        void initialize(Builder builder) {
             valueTypes.clear();
-            caseSensitivity = null;
+            valueTypes.addAll(builder.defaultValueTypes);
+            forObjects = builder.forObjectsByDefault;
+            forArrays = builder.forArraysByDefault;
+        }
+
+        @SuppressWarnings("nls")
+        void addPropertyRepresentaton(StringBuilder target, Obfuscator obfuscator) {
+            target.append("valueTypes=").append(valueTypes);
+            target.append(",obfuscator=").append(obfuscator);
+            target.append(",forObjects=").append(forObjects);
+            target.append(",forArrays=").append(forArrays);
+        }
+
+        void reset() {
+            valueTypes.clear();
             forObjects = null;
             forArrays = null;
         }
@@ -653,6 +747,73 @@ public abstract class JSONObfuscator extends Obfuscator {
     }
 
     /**
+     * An object that can be used to configure a property that should be obfuscated based on its name.
+     *
+     * @author Rob Spoor
+     * @since 3.0
+     */
+    public static final class PropertyNameConfigurer extends PropertyConfigurer<PropertyNameConfigurer> {
+
+        private CaseSensitivity caseSensitivity;
+
+        private PropertyNameConfigurer() {
+        }
+
+        /**
+         * Sets the case sensitivity for the property to {@link CaseSensitivity#CASE_SENSITIVE}.
+         *
+         * @return This object.
+         */
+        public PropertyNameConfigurer caseSensitive() {
+            caseSensitivity = CaseSensitivity.CASE_SENSITIVE;
+            return this;
+        }
+
+        /**
+         * Sets the case sensitivity for the property to {@link CaseSensitivity#CASE_INSENSITIVE}.
+         *
+         * @return This object.
+         */
+        public PropertyNameConfigurer caseInsensitive() {
+            caseSensitivity = CaseSensitivity.CASE_INSENSITIVE;
+            return this;
+        }
+
+        @Override
+        void initialize(Builder builder) {
+            super.initialize(builder);
+            caseSensitivity = builder.defaultCaseSensitivity;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        void addPropertyRepresentaton(StringBuilder target, Obfuscator obfuscator) {
+            if (caseSensitivity == CaseSensitivity.CASE_INSENSITIVE) {
+                target.append("caseInsensitive,");
+            }
+            super.addPropertyRepresentaton(target, obfuscator);
+        }
+
+        @Override
+        void reset() {
+            super.reset();
+            caseSensitivity = null;
+        }
+    }
+
+    /**
+     * An object that can be used to configure a property that should be obfuscated based on their {@linkplain PropertyPath paths}.
+     *
+     * @author Rob Spoor
+     * @since 3.0
+     */
+    public static final class PropertyPathConfigurer extends PropertyConfigurer<PropertyPathConfigurer> {
+
+        private PropertyPathConfigurer() {
+        }
+    }
+
+    /**
      * An object that can be used to configure handling when the obfuscated result exceeds a pre-defined limit.
      *
      * @author Rob Spoor
@@ -680,6 +841,231 @@ public abstract class JSONObfuscator extends Obfuscator {
 
         private void reset() {
             this.truncatedIndicator = null;
+        }
+    }
+
+    /**
+     * A representation of the path to the current property that is obfuscated by a {@link JSONObfuscator}.
+     * + * This path will only contain property names, not array indexes.
+     * <p>
+     * A property path should only be considered valid while obfuscating. Using it outside a matcher configured with
+     * {@link JSONObfuscator.Builder#withPropertyPath(Matcher, Obfuscator)} or
+     * {@link JSONObfuscator.Builder#withPropertyPath(Matcher, Obfuscator, Consumer)} may yield unexpected results.
+     * A property path may be updated several times while obfuscating. It should therefore not escape the matcher or stored in any structure.
+     *
+     * @author Rob Spoor
+     * @since 3.0
+     */
+    public static final class PropertyPath implements Iterable<String> {
+
+        private final List<String> properties = new ArrayList<>();
+        private final List<String> readOnlyProperties = Collections.unmodifiableList(properties);
+
+        void push(String property) {
+            properties.add(property);
+        }
+
+        void pop() {
+            // Empty may occur if pop is called for the outer-most object object
+            if (!properties.isEmpty()) {
+                properties.remove(properties.size() - 1);
+            }
+        }
+
+        List<String> properties() {
+            return readOnlyProperties;
+        }
+
+        /**
+         * Returns the length of the property path. This is the number of properties in the property path.
+         *
+         * @return The length of the property path.
+         */
+        public int length() {
+            return properties.size();
+        }
+
+        /**
+         * Returns a specific property in the property path.
+         *
+         * @param index The index of the property to return.
+         * @return The property at the given index.
+         * @throws IndexOutOfBoundsException If the index is negative or not smaller than the {@linkplain #length() length}.
+         */
+        public String propertyAt(int index) {
+            return properties.get(index);
+        }
+
+        /**
+         * Returns the last property in the property path.
+         *
+         * @return The last property in the property path.
+         */
+        public String lastProperty() {
+            return properties.get(properties.size() - 1);
+        }
+
+        /**
+         * Returns an iterator over the properties in the property path. This iterator does not allow removal of elements.
+         */
+        @Override
+        public Iterator<String> iterator() {
+            return readOnlyProperties.iterator();
+        }
+
+        /**
+         * Returns a string representation of the property path. This representation is the properties of the property path joined by dots.
+         * If any property contains any dots then it will be quoted in the result.
+         *
+         * @return The properties of the property path joined by dots.
+         */
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            return PropertyPaths.join(properties, "", "");
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path contains exactly one or more properties.
+         *
+         * @param property The first property to check for.
+         * @param additionalProperties Additional properties to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher is(String property, String... additionalProperties) {
+            return new IsMatcher(toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path case insensitively contains exactly one or more properties.
+         *
+         * @param property The first property to check for.
+         * @param additionalProperties Additional properties to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher isIgnoreCase(String property, String... additionalProperties) {
+            return new IsIgnoreCaseMatcher(toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path starts with a specific prefix.
+         *
+         * @param property The first property of the prefix to check for.
+         * @param additionalProperties Additional properties of the prefix to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher startsWith(String property, String... additionalProperties) {
+            return new StartsWithMatcher(toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path case insensitively starts with a specific prefix.
+         *
+         * @param property The first property of the prefix to check for.
+         * @param additionalProperties Additional properties of the prefix to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher startsWithIgnoreCase(String property, String... additionalProperties) {
+            return new StartsWithIgnoreCaseMatcher(toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path ends with a specific postfix.
+         *
+         * @param property The first property of the postfix to check for.
+         * @param additionalProperties Additional properties of the postfix to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher endsWith(String property, String... additionalProperties) {
+            return new EndsWithMatcher(toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path case insensitively ends with a specific postfix.
+         *
+         * @param property The first property of the postfix to check for.
+         * @param additionalProperties Additional properties of the postfix to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher endsWithIgnoreCase(String property, String... additionalProperties) {
+            return new EndsWithIgnoreCaseMatcher(toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path contains one or more properties at a specific index.
+         *
+         * @param index The index where the property should occur.
+         *              If it is negative it will be treated as the number of elements from the end of the property path.
+         * @param property The first property to check for.
+         * @param additionalProperties Additional properties to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher containsAt(int index, String property, String... additionalProperties) {
+            return new ContainsAtMatcher(index, toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path case insensitively contains one or more properties at a specific index.
+         *
+         * @param index The index where the property should occur.
+         *              If it is negative it will be treated as the number of elements from the end of the property path.
+         * @param property The first property to check for.
+         * @param additionalProperties Additional properties to check for.
+         * @return The returned matcher.
+         * @throws NullPointerException If any of the given properties is {@code null}.
+         */
+        public static Matcher containsAtIgnoreCase(int index, String property, String... additionalProperties) {
+            return new ContainsAtIgnoreCaseMatcher(index, toList(property, additionalProperties));
+        }
+
+        private static List<String> toList(String property, String... additionalProperties) {
+            List<String> properties = new ArrayList<>(additionalProperties.length + 1);
+            properties.add(Objects.requireNonNull(property));
+            for (String additionalProperty : additionalProperties) {
+                properties.add(Objects.requireNonNull(additionalProperty));
+            }
+            return properties;
+        }
+
+        /**
+         * A matcher for property paths. This extension of {@link Predicate} provides default implementations of {@link Predicate#and(Predicate)},
+         * {@link Predicate#or(Predicate)} and {@link Predicate#negate()} that return objects that define equality, making them more suitable to be
+         * used with {@link JSONObfuscator.Builder#withPropertyPath(Matcher, Obfuscator)} and
+         * {@link JSONObfuscator.Builder#withPropertyPath(Matcher, Obfuscator, Consumer)}.
+         * <p>
+         * While this is a functional interface, using lambdas or method references may not define equality as is recommended for use with
+         * {@link JSONObfuscator.Builder#withPropertyPath(Matcher, Obfuscator)} and
+         * {@link JSONObfuscator.Builder#withPropertyPath(Matcher, Obfuscator, Consumer)}. Implementations should preferably be provided through
+         * custom classes or records instead.
+         *
+         * @author Rob Spoor
+         * @since 3.0
+         */
+        public interface Matcher extends Predicate<PropertyPath> {
+
+            @Override
+            default Matcher and(Predicate<? super PropertyPath> other) {
+                Objects.requireNonNull(other);
+                return new AndMatcher(this, other);
+            }
+
+            @Override
+            default Matcher or(Predicate<? super PropertyPath> other) {
+                Objects.requireNonNull(other);
+                return new OrMatcher(this, other);
+            }
+
+            @Override
+            default Matcher negate() {
+                return new NotMatcher(this);
+            }
         }
     }
 }
