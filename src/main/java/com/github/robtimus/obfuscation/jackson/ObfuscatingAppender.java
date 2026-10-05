@@ -135,7 +135,7 @@ abstract class ObfuscatingAppender<T> {
 
                 currentProperties.removeLast();
             }
-            // else still in a nested structure array that's being obfuscated
+            // else still in a nested structure that's being obfuscated
         }
         // else currently no structure is being obfuscated
 

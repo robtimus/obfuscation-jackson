@@ -574,7 +574,7 @@ public abstract class JSONObfuscator extends Obfuscator {
      *
      * @author Rob Spoor
      */
-    public abstract static sealed class PropertyConfigurer<C> {
+    public abstract static sealed class PropertyConfigurer<C extends PropertyConfigurer<C>> {
 
         private final Set<ValueType> valueTypes = EnumSet.noneOf(ValueType.class);
 
