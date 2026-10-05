@@ -199,6 +199,76 @@ final class PropertyPaths {
         }
     }
 
+    record HasLengthMatcher(int length) implements PropertyPath.Matcher {
+
+        @Override
+        public boolean test(PropertyPath path) {
+            return path.length() == length;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            return "hasLength(" + length + ")";
+        }
+    }
+
+    record HasLengthAtLeastMatcher(int min) implements PropertyPath.Matcher {
+
+        @Override
+        public boolean test(PropertyPath path) {
+            return path.length() >= min;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            return "hasLengthAtLeast(" + min + ")";
+        }
+    }
+
+    record HasLengthGreaterThanMatcher(int min) implements PropertyPath.Matcher {
+
+        @Override
+        public boolean test(PropertyPath path) {
+            return path.length() > min;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            return "hasLengthGreaterThan(" + min + ")";
+        }
+    }
+
+    record HasLengthAtMostMatcher(int max) implements PropertyPath.Matcher {
+
+        @Override
+        public boolean test(PropertyPath path) {
+            return path.length() <= max;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            return "hasLengthAtMost(" + max + ")";
+        }
+    }
+
+    record HasLengthLessThanMatcher(int max) implements PropertyPath.Matcher {
+
+        @Override
+        public boolean test(PropertyPath path) {
+            return path.length() < max;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            return "hasLengthLessThan(" + max + ")";
+        }
+    }
+
     record AndMatcher(Predicate<? super PropertyPath> first, Predicate<? super PropertyPath> second) implements PropertyPath.Matcher {
 
         @Override

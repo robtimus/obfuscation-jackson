@@ -51,6 +51,11 @@ import com.github.robtimus.obfuscation.jackson.PropertyPaths.ContainsAtIgnoreCas
 import com.github.robtimus.obfuscation.jackson.PropertyPaths.ContainsAtMatcher;
 import com.github.robtimus.obfuscation.jackson.PropertyPaths.EndsWithIgnoreCaseMatcher;
 import com.github.robtimus.obfuscation.jackson.PropertyPaths.EndsWithMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.HasLengthAtLeastMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.HasLengthAtMostMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.HasLengthGreaterThanMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.HasLengthLessThanMatcher;
+import com.github.robtimus.obfuscation.jackson.PropertyPaths.HasLengthMatcher;
 import com.github.robtimus.obfuscation.jackson.PropertyPaths.IsIgnoreCaseMatcher;
 import com.github.robtimus.obfuscation.jackson.PropertyPaths.IsMatcher;
 import com.github.robtimus.obfuscation.jackson.PropertyPaths.NotMatcher;
@@ -930,7 +935,7 @@ public abstract class JSONObfuscator extends Obfuscator {
          *
          * @param property The first property to check for.
          * @param additionalProperties Additional properties to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path contains exactly the given properties.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher is(String property, String... additionalProperties) {
@@ -942,7 +947,7 @@ public abstract class JSONObfuscator extends Obfuscator {
          *
          * @param property The first property to check for.
          * @param additionalProperties Additional properties to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path case insensitively contains exactly the given properties.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher isIgnoreCase(String property, String... additionalProperties) {
@@ -954,7 +959,7 @@ public abstract class JSONObfuscator extends Obfuscator {
          *
          * @param property The first property of the prefix to check for.
          * @param additionalProperties Additional properties of the prefix to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path starts with the given properties.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher startsWith(String property, String... additionalProperties) {
@@ -966,7 +971,7 @@ public abstract class JSONObfuscator extends Obfuscator {
          *
          * @param property The first property of the prefix to check for.
          * @param additionalProperties Additional properties of the prefix to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path case insensitively starts with the given properties.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher startsWithIgnoreCase(String property, String... additionalProperties) {
@@ -978,7 +983,7 @@ public abstract class JSONObfuscator extends Obfuscator {
          *
          * @param property The first property of the postfix to check for.
          * @param additionalProperties Additional properties of the postfix to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path ends with the given properties.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher endsWith(String property, String... additionalProperties) {
@@ -990,7 +995,7 @@ public abstract class JSONObfuscator extends Obfuscator {
          *
          * @param property The first property of the postfix to check for.
          * @param additionalProperties Additional properties of the postfix to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path case insensitively ends with the given properties.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher endsWithIgnoreCase(String property, String... additionalProperties) {
@@ -1004,7 +1009,7 @@ public abstract class JSONObfuscator extends Obfuscator {
          *              If it is negative it will be treated as the number of elements from the end of the property path.
          * @param property The first property to check for.
          * @param additionalProperties Additional properties to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path contains the given properties at the given index.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher containsAt(int index, String property, String... additionalProperties) {
@@ -1018,11 +1023,81 @@ public abstract class JSONObfuscator extends Obfuscator {
          *              If it is negative it will be treated as the number of elements from the end of the property path.
          * @param property The first property to check for.
          * @param additionalProperties Additional properties to check for.
-         * @return The returned matcher.
+         * @return A matcher that checks whether a property path case insensitively contains the given properties at the given index.
          * @throws NullPointerException If any of the given properties is {@code null}.
          */
         public static Matcher containsAtIgnoreCase(int index, String property, String... additionalProperties) {
             return new ContainsAtIgnoreCaseMatcher(index, toList(property, additionalProperties));
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path has a specific length.
+         *
+         * @param length The length to check for.
+         * @return A matcher that checks whether a property path has the given length.
+         * @throws IllegalArgumentException If the given length is not at least 1.
+         */
+        public static Matcher hasLength(int length) {
+            if (length < 1) {
+                throw new IllegalArgumentException(length + " < 1"); //$NON-NLS-1$
+            }
+            return new HasLengthMatcher(length);
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path has a length that is greater than or equal to a specific minimum.
+         *
+         * @param min The minimum length to check for, inclusive.
+         * @return A matcher that checks whether a property path has a length that is greater than or equal to the given minimum.
+         * @throws IllegalArgumentException If the given minimum is not at least 1.
+         */
+        public static Matcher hasLengthAtLeast(int min) {
+            if (min < 1) {
+                throw new IllegalArgumentException(min + " < 1"); //$NON-NLS-1$
+            }
+            return new HasLengthAtLeastMatcher(min);
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path has a length that is greater than a specific minimum.
+         *
+         * @param min The minimum length to check for, exclusive.
+         * @return A matcher that checks whether a property path has a length that is greater than the given minimum.
+         * @throws IllegalArgumentException If the given minimum is not at least 1.
+         */
+        public static Matcher hasLengthGreaterThan(int min) {
+            if (min < 1) {
+                throw new IllegalArgumentException(min + " < 1"); //$NON-NLS-1$
+            }
+            return new HasLengthGreaterThanMatcher(min);
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path has a length that is less than or equal to a specific maximum.
+         *
+         * @param max The maximum length to check for, inclusive.
+         * @return A matcher that checks whether a property path has a length that is less than or equal to the given maximum.
+         * @throws IllegalArgumentException If the given maximum is not at least 1.
+         */
+        public static Matcher hasLengthAtMost(int max) {
+            if (max < 1) {
+                throw new IllegalArgumentException(max + " < 1"); //$NON-NLS-1$
+            }
+            return new HasLengthAtMostMatcher(max);
+        }
+
+        /**
+         * Returns a matcher that checks whether a property path has a length that is less than a specific maximum.
+         *
+         * @param max The maximum length to check for, exclusive.
+         * @return A matcher that checks whether a property path has a length that is less than the given maximum.
+         * @throws IllegalArgumentException If the given maximum is not at least 1.
+         */
+        public static Matcher hasLengthLessThan(int max) {
+            if (max < 1) {
+                throw new IllegalArgumentException(max + " < 1"); //$NON-NLS-1$
+            }
+            return new HasLengthLessThanMatcher(max);
         }
 
         private static List<String> toList(String property, String... additionalProperties) {

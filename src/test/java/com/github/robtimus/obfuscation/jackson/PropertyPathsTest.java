@@ -19,6 +19,7 @@ package com.github.robtimus.obfuscation.jackson;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -918,6 +919,196 @@ class PropertyPathsTest {
 
                 assertEquals("containsAtIgnoreCase(-10, a.\"b.c\")", matcher.toString());
             }
+        }
+    }
+
+    @Nested
+    class HasLength {
+
+        @Test
+        void testLengthLessThanValue() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLength(3);
+
+            assertFalse(matcher.test(newPath("a", "b")));
+        }
+
+        @Test
+        void testLengthEqualToValue() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLength(3);
+
+            assertTrue(matcher.test(newPath("a", "b", "c")));
+        }
+
+        @Test
+        void testLengthGreaterThanValue() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLength(3);
+
+            assertFalse(matcher.test(newPath("a", "b", "c", "d")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = { -1, 0 })
+        void testInvalidLength(int length) {
+            assertThrows(IllegalArgumentException.class, () -> PropertyPath.hasLength(length));
+        }
+
+        @Test
+        void testToString() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLength(3);
+
+            assertEquals("hasLength(3)", matcher.toString());
+        }
+    }
+
+    @Nested
+    class HasLengthAtLeast {
+
+        @Test
+        void testLengthLessThanMin() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtLeast(3);
+
+            assertFalse(matcher.test(newPath("a", "b")));
+        }
+
+        @Test
+        void testLengthEqualToMin() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtLeast(3);
+
+            assertTrue(matcher.test(newPath("a", "b", "c")));
+        }
+
+        @Test
+        void testLengthGreaterThanMin() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtLeast(3);
+
+            assertTrue(matcher.test(newPath("a", "b", "c", "d")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = { -1, 0 })
+        void testInvalidLength(int length) {
+            assertThrows(IllegalArgumentException.class, () -> PropertyPath.hasLengthAtLeast(length));
+        }
+
+        @Test
+        void testToString() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtLeast(3);
+
+            assertEquals("hasLengthAtLeast(3)", matcher.toString());
+        }
+    }
+
+    @Nested
+    class HasLengthGreaterThan {
+
+        @Test
+        void testLengthLessThanMin() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthGreaterThan(3);
+
+            assertFalse(matcher.test(newPath("a", "b")));
+        }
+
+        @Test
+        void testLengthEqualToMin() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthGreaterThan(3);
+
+            assertFalse(matcher.test(newPath("a", "b", "c")));
+        }
+
+        @Test
+        void testLengthGreaterThanMin() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthGreaterThan(3);
+
+            assertTrue(matcher.test(newPath("a", "b", "c", "d")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = { -1, 0 })
+        void testInvalidLength(int length) {
+            assertThrows(IllegalArgumentException.class, () -> PropertyPath.hasLengthGreaterThan(length));
+        }
+
+        @Test
+        void testToString() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthGreaterThan(3);
+
+            assertEquals("hasLengthGreaterThan(3)", matcher.toString());
+        }
+    }
+
+    @Nested
+    class HasLengthAtMost {
+
+        @Test
+        void testLengthLessThanMax() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtMost(3);
+
+            assertTrue(matcher.test(newPath("a", "b")));
+        }
+
+        @Test
+        void testLengthEqualToMax() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtMost(3);
+
+            assertTrue(matcher.test(newPath("a", "b", "c")));
+        }
+
+        @Test
+        void testLengthGreaterThanMax() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtMost(3);
+
+            assertFalse(matcher.test(newPath("a", "b", "c", "d")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = { -1, 0 })
+        void testInvalidLength(int length) {
+            assertThrows(IllegalArgumentException.class, () -> PropertyPath.hasLengthAtMost(length));
+        }
+
+        @Test
+        void testToString() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthAtMost(3);
+
+            assertEquals("hasLengthAtMost(3)", matcher.toString());
+        }
+    }
+
+    @Nested
+    class HasLengthLessThan {
+
+        @Test
+        void testLengthLessThanMax() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthLessThan(3);
+
+            assertTrue(matcher.test(newPath("a", "b")));
+        }
+
+        @Test
+        void testLengthEqualToMax() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthLessThan(3);
+
+            assertFalse(matcher.test(newPath("a", "b", "c")));
+        }
+
+        @Test
+        void testLengthGreaterThanMax() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthLessThan(3);
+
+            assertFalse(matcher.test(newPath("a", "b", "c", "d")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = { -1, 0 })
+        void testInvalidLength(int length) {
+            assertThrows(IllegalArgumentException.class, () -> PropertyPath.hasLengthLessThan(length));
+        }
+
+        @Test
+        void testToString() {
+            PropertyPath.Matcher matcher = PropertyPath.hasLengthLessThan(3);
+
+            assertEquals("hasLengthLessThan(3)", matcher.toString());
         }
     }
 
