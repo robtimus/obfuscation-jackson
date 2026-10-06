@@ -851,7 +851,7 @@ public abstract class JSONObfuscator extends Obfuscator {
 
     /**
      * A representation of the path to the current property that is obfuscated by a {@link JSONObfuscator}.
-     * + * This path will only contain property names, not array indexes.
+     * This path will only contain property names, not array indexes.
      * <p>
      * A property path should only be considered valid while obfuscating. Using it outside a matcher configured with
      * {@link JSONObfuscator.Builder#withPropertyPath(Matcher, Obfuscator)} or
