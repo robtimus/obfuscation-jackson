@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -49,12 +50,16 @@ record PropertyConfig(
 
     static final class Lookup {
 
-        private final Map<PropertyPath.Matcher, Map<ValueType, PropertyConfig>> propertyPaths;
+        private final List<PropertyPathRegistration> propertyPaths;
         private final Map<String, Map<ValueType, PropertyConfig>> caseSensitiveProperties;
         private final Map<String, Map<ValueType, PropertyConfig>> caseInsensitiveProperties;
 
         private Lookup(Builder builder) {
-            propertyPaths = copy(builder.propertyPaths, new LinkedHashMap<>());
+            propertyPaths = builder.propertyPaths
+                    .entrySet()
+                    .stream()
+                    .map(e -> new PropertyPathRegistration(e.getKey(), new EnumMap<>(e.getValue())))
+                    .toList();
             caseSensitiveProperties = copy(builder.caseSensitiveProperties, new HashMap<>());
             caseInsensitiveProperties = copy(builder.caseInsensitiveProperties, new TreeMap<>(String.CASE_INSENSITIVE_ORDER));
         }
@@ -75,9 +80,9 @@ record PropertyConfig(
         }
 
         private PropertyConfig findByPropertyPath(PropertyPath path, ValueType valueType) {
-            for (Map.Entry<PropertyPath.Matcher, Map<ValueType, PropertyConfig>> entry : propertyPaths.entrySet()) {
-                if (entry.getKey().test(path)) {
-                    PropertyConfig config = entry.getValue().get(valueType);
+            for (PropertyPathRegistration registration : propertyPaths) {
+                if (registration.matcher.test(path)) {
+                    PropertyConfig config = registration.configs.get(valueType);
                     if (config != null) {
                         return config;
                     }
@@ -160,6 +165,9 @@ record PropertyConfig(
             Lookup build() {
                 return new Lookup(this);
             }
+        }
+
+        private record PropertyPathRegistration(PropertyPath.Matcher matcher, Map<ValueType, PropertyConfig> configs) {
         }
     }
 }

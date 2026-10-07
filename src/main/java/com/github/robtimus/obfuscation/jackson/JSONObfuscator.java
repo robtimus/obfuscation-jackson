@@ -1005,8 +1005,8 @@ public abstract class JSONObfuscator extends Obfuscator {
         /**
          * Returns a matcher that checks whether a property path contains one or more properties at a specific index.
          *
-         * @param index The index where the property should occur.
-         *              If it is negative it will be treated as the number of elements from the end of the property path.
+         * @param index The index where the first property should occur.
+         *              If it is negative it will be treated as the number of properties from the end of the property path.
          * @param property The first property to check for.
          * @param additionalProperties Additional properties to check for.
          * @return A matcher that checks whether a property path contains the given properties at the given index.
@@ -1019,8 +1019,8 @@ public abstract class JSONObfuscator extends Obfuscator {
         /**
          * Returns a matcher that checks whether a property path case insensitively contains one or more properties at a specific index.
          *
-         * @param index The index where the property should occur.
-         *              If it is negative it will be treated as the number of elements from the end of the property path.
+         * @param index The index where the first property should occur.
+         *              If it is negative it will be treated as the number of properties from the end of the property path.
          * @param property The first property to check for.
          * @param additionalProperties Additional properties to check for.
          * @return A matcher that checks whether a property path case insensitively contains the given properties at the given index.
